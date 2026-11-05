@@ -72,6 +72,8 @@ const createFixture = (
         deleteTexture: () => deleted.push('texture'),
         getExtension: () => null,
         isContextLost: () => false,
+        NO_ERROR: 0,
+        getError: () => 0,
         activeTexture: noop,
         bindTexture: noop,
         texParameteri: noop,

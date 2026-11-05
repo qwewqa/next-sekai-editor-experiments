@@ -5,6 +5,7 @@ import { playbackBgm } from '../../history/bgm'
 import { session } from '../../history/session'
 import { showModal } from '../../modals'
 import { readPreviewBackdrop } from '../../preview/backdrop'
+import { previewSuspended } from '../../preview/suspend'
 import { settings } from '../../settings'
 import { peekedInfo, peekedSession } from '../history/selection'
 import { waitForCurrentBgm } from '../media/heldBgm'
@@ -69,6 +70,8 @@ export const openExportVideo = async (
             selection: [...snapshot.selectedEntities],
             env,
         }
+        // The dialog's renderer holds its own copy of the atlases, so the preview frees its copy.
+        previewSuspended.value = true
         await showModal(
             ExportVideoModal,
             {
@@ -79,6 +82,7 @@ export const openExportVideo = async (
             { size: 'large', wide: true },
         )
     } finally {
+        previewSuspended.value = false
         opening = false
     }
 }

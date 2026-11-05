@@ -15,6 +15,25 @@ if (testKeysOpen) {
             return check.call(this, attachment)
         }
     }
+    if (target === 'uploadError') {
+        const prototype = WebGL2RenderingContext.prototype
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- Called with its context below.
+        const upload = prototype.texImage2D
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- Called with its context below.
+        const getError = prototype.getError
+        let uploaded = false
+        let reported = false
+        prototype.texImage2D = function (...args: unknown[]) {
+            if (args.some((arg) => arg instanceof ImageBitmap)) uploaded = true
+            Reflect.apply(upload, this, args)
+        }
+        // The first read after the first atlas upload.
+        prototype.getError = function () {
+            if (!uploaded || reported) return getError.call(this)
+            reported = true
+            return this.OUT_OF_MEMORY
+        }
+    }
     installExportWorker(async (start, destination, signal) => {
         if (destination.kind !== 'staged') throw new Error('Test sink requires a staged target')
         const target = await openStagedFile(destination.name, signal)

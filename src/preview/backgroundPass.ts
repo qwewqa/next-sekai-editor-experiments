@@ -236,6 +236,8 @@ export const createBackgroundPass = (gl: WebGL2RenderingContext) => {
             gl.uniform1i(mode, 2)
             gl.drawArrays(gl.TRIANGLES, 0, 3)
         },
+        /** Frees the blur's buffers. The next blur allocates them again. */
+        release: clear,
         dispose() {
             clear()
             gl.deleteProgram(program)

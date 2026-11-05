@@ -23,6 +23,8 @@ import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
 import { exposePreviewTest } from './previewTest'
 import type { LoadedSkin } from './skin'
+import { previewSuspended } from './suspend'
+import { uploadAtlas } from './uploadAtlas'
 import type { usePreviewResources } from './usePreviewResources'
 import { previewHost, previewWorker } from './worker/host'
 
@@ -175,10 +177,18 @@ export const usePreviewRendering = (
     let uploadedSkin: LoadedSkin | undefined
     let uploadedParticle: LoadedParticle | undefined
     let uploadedBackground: LoadedBackground | undefined
+    watch(previewSuspended, (suspended) => {
+        if (!suspended) return
+        renderer.value?.releaseTextures()
+        uploadedRenderer = undefined
+        uploadedSkin = undefined
+        uploadedParticle = undefined
+        uploadedBackground = undefined
+    })
     watch(
-        [renderer, skin, particle, loadedBackground, isAppActive],
-        ([nextRenderer, nextSkin, nextParticle, nextBackground, active]) => {
-            if (!active || !nextRenderer) return
+        [renderer, skin, particle, loadedBackground, isAppActive, previewSuspended],
+        ([nextRenderer, nextSkin, nextParticle, nextBackground, active, suspended]) => {
+            if (!active || !nextRenderer || suspended) return
 
             try {
                 // A bitmap moved to the worker is detached, with no size, until it comes back or
@@ -187,21 +197,21 @@ export const usePreviewRendering = (
                     nextSkin?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextSkin !== uploadedSkin)
                 ) {
-                    nextRenderer.setTexture(0, nextSkin.texture, nextSkin.interpolation)
+                    uploadAtlas(nextRenderer, 0, nextSkin.texture, nextSkin.interpolation)
                     uploadedSkin = nextSkin
                 }
                 if (
                     nextParticle?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextParticle !== uploadedParticle)
                 ) {
-                    nextRenderer.setTexture(1, nextParticle.texture, nextParticle.interpolation)
+                    uploadAtlas(nextRenderer, 1, nextParticle.texture, nextParticle.interpolation)
                     uploadedParticle = nextParticle
                 }
                 if (
                     nextBackground?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextBackground !== uploadedBackground)
                 ) {
-                    nextRenderer.setTexture(3, nextBackground.texture, true)
+                    uploadAtlas(nextRenderer, 3, nextBackground.texture, true)
                     uploadedBackground = nextBackground
                 }
                 uploadedRenderer = nextRenderer
@@ -298,6 +308,11 @@ export const usePreviewRendering = (
                 return
             }
             const host = worker.value
+            // The worker host posts frames. Its worker answers them without drawing.
+            if (!host && previewSuspended.value) {
+                renderFrame = undefined
+                return
+            }
             const currentRenderer = renderer.value
             const currentSkin = skin.value
             // The worker host draws once the worker has a context for the panel's canvas.

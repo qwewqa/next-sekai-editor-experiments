@@ -47,11 +47,16 @@ export const createExportRenderer = (scene: ExportScene, fail: (error: unknown) 
         if (fade) gl.deleteProgram(fade)
         renderer.dispose()
     }
+    // After an atlas upload fails, the export still draws, and every frame counts as incomplete.
+    const errors: number[] = []
     try {
-        renderer.setTexture(0, assets.skin.texture, assets.skin.interpolation)
+        errors.push(renderer.setTexture(0, assets.skin.texture, assets.skin.interpolation))
         if (assets.particle)
-            renderer.setTexture(1, assets.particle.texture, assets.particle.interpolation)
-        if (assets.background) renderer.setTexture(3, assets.background.texture, true)
+            errors.push(
+                renderer.setTexture(1, assets.particle.texture, assets.particle.interpolation),
+            )
+        if (assets.background) errors.push(renderer.setTexture(3, assets.background.texture, true))
+        const uploadFailed = errors.some(Boolean)
         fade = linkProgram(
             gl,
             'export fade',
@@ -136,7 +141,7 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                 }
                 if (s.renderScale !== 1) composite?.present(s.width, s.height)
                 if (gl.isContextLost()) throw new GraphicsError('Export graphics context was lost')
-                return renderer.checkError()
+                return renderer.checkError() && !uploadFailed
             } catch (error) {
                 throw error instanceof GraphicsError ? error : new GraphicsError(String(error))
             }

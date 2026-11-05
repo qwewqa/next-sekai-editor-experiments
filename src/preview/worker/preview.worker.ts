@@ -11,6 +11,8 @@ import { createPreviewRenderer, type PreviewSurface } from '../gl'
 import { createOutlineRenderer, type OutlineRenderer } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
+import { installTextureAccount } from '../textureAccount'
+import { uploadAtlas } from '../uploadAtlas'
 import { applyMirror, selectedObjects, type MirrorState } from './mirror'
 import type {
     FromPreviewWorker,
@@ -60,12 +62,15 @@ let lastInput: PreviewFrameInput | undefined
 
 let counters: PreviewWorkerCounters | undefined
 
+// Set while Export Video is open. The worker then holds no atlas textures and does not draw.
+let suspended = false
+
 const upload = () => {
-    if (!renderer) return
+    if (!renderer || suspended) return
     for (const slot of [0, 1, 3] as const) {
         const atlas = atlases[slot]
         if (!atlas || uploaded[slot] === atlas.bitmap) continue
-        renderer.setTexture(slot, atlas.bitmap, atlas.interpolation)
+        uploadAtlas(renderer, slot, atlas.bitmap, atlas.interpolation)
         uploaded[slot] = atlas.bitmap
     }
 }
@@ -80,7 +85,7 @@ const createRenderer = () => {
 }
 
 const draw = () => {
-    if (!renderer || lost || !skin || !mirror || !lastInput) return
+    if (!renderer || lost || suspended || !skin || !mirror || !lastInput) return
     const chart = build(mirror, lastInput.noteSpeed)
     drawPreviewFrame(renderer, outline, skin, particle, chart, lastInput, selection)
 }
@@ -187,6 +192,8 @@ const installCounters = () => {
     watch('deleteProgram', (_gl, [program]) => {
         if (program && names.has(program)) current.releases++
     })
+    // The specs read it in this worker.
+    Reflect.set(globalThis, 'textureAccount', installTextureAccount(isPreview))
 }
 
 const report = () => {
@@ -293,6 +300,18 @@ const handle = (message: ToPreviewWorker) => {
         }
         case 'release':
             for (const item of retired.splice(0)) item.dispose()
+            return
+        case 'suspend':
+            if (message.suspended === suspended) return
+            suspended = message.suspended
+            if (suspended) {
+                renderer?.releaseTextures()
+                uploaded.length = 0
+                return
+            }
+            // Upload the current atlases, including any that arrived while suspended.
+            upload()
+            draw()
             return
         case 'return': {
             // The canvases stay. The main thread terminates the worker once the page no longer

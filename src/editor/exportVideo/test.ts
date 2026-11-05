@@ -21,6 +21,8 @@ export type ExportTestOptions = {
     backgroundBlur?: number
     failWrite?: boolean
     incompleteTarget?: 'foreground' | 'composite'
+    /** The skin's upload in the export worker reports that it ran out of memory. */
+    uploadError?: boolean
 }
 
 const services = createExportServices()
@@ -209,7 +211,9 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
             : () => {
                   const worker = new Worker(new URL('./test.worker.ts', import.meta.url), {
                       type: 'module',
-                      name: options.incompleteTarget ?? 'nse-export-test',
+                      name:
+                          options.incompleteTarget ??
+                          (options.uploadError ? 'uploadError' : 'nse-export-test'),
                   })
                   worker.addEventListener('message', (event) => {
                       if ((event.data as { type: string }).type === 'prepared') prepared = true

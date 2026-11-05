@@ -945,3 +945,240 @@ test(
         }
     },
 )
+
+// Video queries and trials that wait for the test to answer them. Each counts while it runs, so
+// a test can check how many ran at once. The settings are silent WebM, with one query per size.
+const tick = () => new Promise((resolve) => setImmediate(resolve))
+const silentWebm = { ...settings, format: 'webm', bgm: false, sfx: false } as const
+const at = (height: number): CodecSettings => ({ ...silentWebm, ...outputSize(height, 16 / 9) })
+const sizes = (...heights: number[]) =>
+    Object.fromEntries(heights.map((height) => [`r${height}`, outputSize(height, 16 / 9)]))
+const heldProbes = () => {
+    type Held = { name: string; settled: boolean; answer: (supported: boolean) => void }
+    const started: Held[] = []
+    const diagnostics: string[] = []
+    let running = 0
+    let most = 0
+    const hold = (name: string, signal?: AbortSignal) =>
+        new Promise<boolean>((resolve, reject) => {
+            running++
+            most = Math.max(most, running)
+            const held: Held = {
+                name,
+                settled: false,
+                answer: (supported) => {
+                    if (held.settled) return
+                    held.settled = true
+                    running--
+                    resolve(supported)
+                },
+            }
+            signal?.addEventListener('abort', () => {
+                if (held.settled) return
+                held.settled = true
+                running--
+                reject(signal.reason as Error)
+            })
+            started.push(held)
+        })
+    const probes = createCodecProbes(
+        {
+            video: async (c) => ({ supported: await hold(`query ${c.height}`) }),
+            trial: (c, signal) => hold(`trial ${c.height}`, signal),
+        },
+        undefined,
+        { diagnose: (text) => diagnostics.push(text), stallMs: 50 },
+    )
+    return {
+        probes,
+        diagnostics,
+        get most() {
+            return most
+        },
+        /** The operations started so far, in order. */
+        names: () => started.map((held) => held.name),
+        /** Answers the operation running now. Returns false when none is running. */
+        answer: async (supported = true) => {
+            await tick()
+            const held = started.find((item) => !item.settled)
+            held?.answer(supported)
+            await tick()
+            return !!held
+        },
+        /** Answers each operation as it starts, until `done` settles. */
+        answerUntil: async <T>(done: Promise<T>) => {
+            let finished = false
+            void done.finally(() => {
+                finished = true
+            })
+            for (let i = 0; i < 100 && !finished; i++) {
+                started.find((item) => !item.settled)?.answer(true)
+                await tick()
+            }
+            assert.ok(finished)
+            return done
+        },
+    }
+}
+
+test('one video query or trial runs at a time, through choices, a newer update and a reopen', async () => {
+    const held = heldProbes()
+    const choices = { ...sizes(720, 1440, 2160), fps30: { frameRate: 30 } as const }
+    const availability = createCodecAvailability(held.probes)
+    const first = availability.update(at(1080), choices)
+    // The selection's query and trial, then the first choice's query.
+    for (let i = 0; i < 3; i++) assert.ok(await held.answer())
+    const second = availability.update(at(720), choices)
+    for (let i = 0; i < 2; i++) assert.ok(await held.answer())
+    // The dialog closes with a query running and opens again.
+    availability.stop()
+    await Promise.all([first, second])
+    const reopened = createCodecAvailability(held.probes)
+    const state = await held.answerUntil(reopened.update(at(1440), choices))
+    assert.equal(state.current?.supported, true)
+    assert.equal(held.most, 1)
+})
+
+test("a newer update's selection waits for the running query, and the older update's queued one is skipped", async () => {
+    const held = heldProbes()
+    const dialog = createCodecAvailability(held.probes)
+    const first = dialog.update(at(1080), sizes(1440, 720))
+    assert.ok(await held.answer())
+    assert.ok(await held.answer())
+    // The 1440p choice runs and the 720p one waits behind it.
+    assert.deepEqual(held.names(), ['query 1080', 'trial 1080', 'query 1440'])
+    const second = dialog.update(at(720), {})
+    await tick()
+    assert.equal(held.names().length, 3)
+    const state = await held.answerUntil(second)
+    await first
+    assert.equal(state.current?.supported, true)
+    // The first update's queued 720p query was skipped, so the selection's query ran once.
+    assert.deepEqual(held.names().slice(3), ['query 720', 'trial 720'])
+    assert.equal(held.most, 1)
+})
+
+test('a query that never ends holds the lane, so later queries wait, cached answers do not, and a diagnostic is recorded once', async () => {
+    const held = heldProbes()
+    await held.answerUntil(held.probes.resolve(at(540), { trial: false }))
+    const before = held.names().length
+    const dialog = createCodecAvailability(held.probes)
+    void dialog.update(at(2160), {})
+    await tick()
+    dialog.stop()
+    const reopened = createCodecAvailability(held.probes)
+    const pending = reopened.update(at(720), {})
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    // The 720p selection has not started, and it is pending, not unsupported.
+    assert.deepEqual(held.names().slice(before), ['query 2160'])
+    assert.equal(reopened.state.pending, true)
+    const cached = await held.probes.resolve(at(540), { trial: false })
+    assert.equal(cached.supported, true)
+    assert.equal(held.names().length, before + 1)
+    assert.equal(held.diagnostics.length, 1)
+    assert.match(
+        held.diagnostics[0]!,
+        /^Video support query still running after 0.05 s: .*"height":2160/,
+    )
+    // Once the stuck query ends, the selection runs.
+    const state = await held.answerUntil(pending)
+    assert.equal(state.current?.supported, true)
+    assert.deepEqual(held.names().slice(before), ['query 2160', 'query 720', 'trial 720'])
+    assert.equal(held.diagnostics.length, 1)
+})
+
+test('a reopened dialog waits for the running query, and shares it when it needs the same configuration', async () => {
+    const held = heldProbes()
+    const dialog = createCodecAvailability(held.probes)
+    void dialog.update(at(1080), {})
+    await tick()
+    dialog.stop()
+    const reopened = createCodecAvailability(held.probes)
+    const same = reopened.update(at(1080), {})
+    const other = held.probes.resolve(at(720), { trial: false })
+    await tick()
+    assert.deepEqual(held.names(), ['query 1080'])
+    const [state] = await held.answerUntil(Promise.all([same, other]))
+    assert.equal(state.current?.supported, true)
+    assert.deepEqual(held.names(), ['query 1080', 'query 720', 'trial 1080'])
+    assert.equal(held.most, 1)
+})
+
+test('two callers share a query, and the one that aborts gets its abort at once', async () => {
+    const held = heldProbes()
+    // First while the query waits behind another, then while it runs.
+    for (const [height, queued] of [
+        [480, true],
+        [540, false],
+    ] as const) {
+        const blocker = queued ? held.probes.resolve(at(360), { trial: false }) : undefined
+        const leaving = new AbortController()
+        const left = held.probes.resolve(at(height), { trial: false, signal: leaving.signal })
+        const staying = held.probes.resolve(at(height), {
+            trial: false,
+            signal: new AbortController().signal,
+        })
+        await tick()
+        leaving.abort()
+        await assert.rejects(left, { name: 'AbortError' })
+        const [, kept] = await held.answerUntil(Promise.all([blocker, staying]))
+        assert.equal(kept.supported, true)
+    }
+    assert.deepEqual(held.names(), ['query 360', 'query 480', 'query 540'])
+})
+
+test('a queued query whose last caller leaves is skipped, and a later caller runs it', async () => {
+    const held = heldProbes()
+    const blocker = held.probes.resolve(at(360), { trial: false })
+    const leaving = new AbortController()
+    const left = held.probes.resolve(at(480), { trial: false, signal: leaving.signal })
+    await tick()
+    leaving.abort()
+    await assert.rejects(left, { name: 'AbortError' })
+    await held.answerUntil(blocker)
+    await tick()
+    assert.deepEqual(held.names(), ['query 360'])
+    const again = await held.answerUntil(held.probes.resolve(at(480), { trial: false }))
+    assert.equal(again.supported, true)
+    assert.deepEqual(held.names(), ['query 360', 'query 480'])
+})
+
+test('a query and a trial for one configuration each run once, in the order they reach the lane', async () => {
+    const held = heldProbes()
+    const selection = held.probes.resolve(at(1080))
+    const choice = held.probes.resolve(at(720), { trial: false })
+    await held.answerUntil(Promise.all([selection, choice]))
+    // The trial reached the lane after the 720p query, which was waiting by then.
+    assert.deepEqual(held.names(), ['query 1080', 'query 720', 'trial 1080'])
+    assert.equal(held.most, 1)
+})
+
+test("an older update's late answer changes nothing shown, holds the lane until it ends, and is kept", async () => {
+    const held = heldProbes()
+    await held.answerUntil(held.probes.resolve(at(720)))
+    const dialog = createCodecAvailability(held.probes)
+    let shown = 0
+    const first = dialog.update(at(1080), sizes(1440))
+    assert.ok(await held.answer())
+    assert.ok(await held.answer())
+    assert.equal(held.names().at(-1), 'query 1440')
+    // The newer update's selection is cached, so it is shown before the 1440p answer.
+    const second = dialog.update(at(720), sizes(540), () => {
+        shown++
+    })
+    await tick()
+    assert.equal(shown, 1)
+    assert.equal(dialog.state.current?.supported, true)
+    const before = held.names().length
+    assert.ok(await held.answer(false))
+    await first
+    // The 540p choice started only after the 1440p query ended.
+    assert.deepEqual(held.names().slice(before), ['query 540'])
+    const state = await held.answerUntil(second)
+    assert.equal(shown, 2)
+    assert.deepEqual(Object.keys(state.choices), ['r540'])
+    assert.equal(dialog.state, state)
+    const late = await held.probes.resolve(at(1440), { trial: false })
+    assert.deepEqual(late, { supported: false, reason: 'videoConfig' })
+    assert.equal(held.names().filter((name) => name === 'query 1440').length, 1)
+})

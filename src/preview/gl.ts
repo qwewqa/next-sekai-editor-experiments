@@ -167,10 +167,21 @@ const writeVertex = (
     data[offset + 9] = a
 }
 
-export type PreviewSurface = PreviewRenderer & {
+export type PreviewSurface = Omit<PreviewRenderer, 'setTexture'> & {
+    /**
+     * Returns the upload's GL error, or `NO_ERROR` (0). After an error the slot's texture may be
+     * incomplete. A lost context counts as no error, since it is restored instead.
+     */
+    setTexture: (index: TextureSlot, texture: ImageBitmap, interpolation: boolean) => number
     prepareFrame: (width: number, height: number) => void
     compositeBackground: (quad: Quad, input: PreviewFrameInput) => void
     hasTexture: (slot: TextureSlot) => boolean
+    /**
+     * Frees the skin, particle and background textures with every mip level, and the background
+     * blur. The slots stay empty until the next upload. The context and the canvas
+     * stay.
+     */
+    releaseTextures: () => void
     setRenderTarget: (options: RenderTargetOptions | undefined) => RenderTarget | undefined
     /** The caller owns this single-sample target and presents it after the composite. */
     setCompositeTarget: (target: RenderTarget | undefined) => void
@@ -349,6 +360,25 @@ export const createPreviewRenderer = (
             restoreState = true
         },
         hasTexture: (slot) => hasTextures[slot] === true,
+        releaseTextures() {
+            if (disposed || gl.isContextLost()) return
+            for (const slot of [0, 1, 3] as const) {
+                // A new texture object frees every level of the old one.
+                const texture = gl.createTexture()
+                gl.deleteTexture(textures[slot] ?? null)
+                textures[slot] = texture
+                hasTextures[slot] = false
+                gl.activeTexture(gl.TEXTURE0 + slot)
+                gl.bindTexture(gl.TEXTURE_2D, texture)
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+            }
+            backgroundPass?.release()
+            backgroundIdentity = undefined
+            restoreState = true
+            // Without a flush, the deletes reach the GPU process only with the next frame.
+            gl.flush()
+        },
         setCompositeTarget: (value) => {
             compositeTarget = value
         },
@@ -376,7 +406,9 @@ export const createPreviewRenderer = (
         },
 
         setTexture(index, bitmap, interpolation) {
-            if (disposed) return
+            if (disposed) return gl.NO_ERROR
+            // An error left by an earlier call is not the upload's.
+            for (let i = 0; i < 16; i++) if (gl.getError() === gl.NO_ERROR) break
             gl.activeTexture(gl.TEXTURE0 + index)
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             gl.bindTexture(gl.TEXTURE_2D, textures[index]!)
@@ -393,9 +425,11 @@ export const createPreviewRenderer = (
                 mipmapped ? gl.LINEAR_MIPMAP_LINEAR : filter,
             )
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
-
             hasTextures[index] = true
             if (index === 3) backgroundIdentity = { width: bitmap.width, height: bitmap.height }
+            // A failed allocation is reported here, not by an exception.
+            const error = gl.getError()
+            return gl.isContextLost() ? gl.NO_ERROR : error
         },
 
         reserveTexture(slot, width, height) {

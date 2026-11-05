@@ -69,6 +69,17 @@ test('cancel is refused once the commit starts', async ({ page }) => {
     expect(result.phase).toBe('ready')
 })
 
+test('an atlas upload that runs out of memory still exports, with every frame marked incomplete', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() =>
+        window.editorTest.exportVideo({ uploadError: true, settings: { frames: 3 } }),
+    )
+    expect(result.error).toBeUndefined()
+    expect(result.phase).toBe('ready')
+    expect(result.warnings).toEqual([{ code: 'framesIncomplete', count: 3 }])
+})
+
 test('context loss ends the picture at the frames already captured', async ({ page }) => {
     const result = await page.evaluate(() => window.editorTest.exportVideo({ loseContextAt: 4 }))
     expect(result.error).toBeUndefined()

@@ -20,6 +20,7 @@ const previewHostSpecs = [
     'preview.spec.ts',
     'previewSelection.spec.ts',
     'previewAtlasCopies.spec.ts',
+    'previewExportOpen.spec.ts',
     'previewCombo.spec.ts',
     'scalingLiveFactor.spec.ts',
 ]

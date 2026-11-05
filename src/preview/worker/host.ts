@@ -12,6 +12,7 @@ import type { ComboPixels } from '../engine/comboDraw'
 import type { OutlineAlpha } from '../outlineRenderer'
 import type { LoadedParticle } from '../particle'
 import type { LoadedSkin } from '../skin'
+import { previewSuspended } from '../suspend'
 import { decodeAtlasesAgain } from '../usePreviewResources'
 import { createMirrorSender, selectionPlaces } from './mirror'
 import previewWorkerUrl from './preview.worker?worker&url'
@@ -132,6 +133,8 @@ const startWorker = () => {
         worker.postMessage(message, transfer)
     }
     post({ type: 'start', test: testKeysOpen && 'previewTest' in window, flags })
+    // A worker started while Export Video is open starts suspended.
+    if (previewSuspended.value) post({ type: 'suspend', suspended: true })
 
     /** The worker's renderer's limit, once its context is ready. */
     const maxViewportSize = shallowRef<{ width: number; height: number }>()
@@ -360,6 +363,9 @@ const startWorker = () => {
                     finish(undefined, error)
                 }
             }),
+        suspend: (suspended: boolean) => {
+            if (!stopped) post({ type: 'suspend', suspended })
+        },
         /** Ends the worker, which hands the atlases back; the main host draws next. */
         stop: () => stop(undefined, true),
         /** A chart switch: the next frame sends a first copy, and a frame waiting for the old chart is dropped. */
@@ -500,6 +506,8 @@ export const previewWorker = () => (client ??= startWorker())
 
 // A chart switch: the worker starts a new builder from a first copy.
 onResetState(() => client?.reset())
+
+watch(previewSuspended, (suspended) => client?.suspend(suspended), { flush: 'sync' })
 
 // The setting moves the preview between hosts at once: the panel's canvases are mounted again,
 // as for a handover.
