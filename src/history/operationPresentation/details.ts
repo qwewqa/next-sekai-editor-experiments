@@ -1,5 +1,10 @@
 import { toDisplayedBeat } from '../../editor/beatDisplay'
 import {
+    brushGroups,
+    propertyField,
+    propertyFields,
+} from '../../editor/workspace/properties/fields'
+import {
     checkedSum,
     decodeOperation,
     isObject,
@@ -49,6 +54,21 @@ type RecordData = {
 }
 
 const plain = (text: string): DetailText => ({ text })
+
+const tableIndex = new Map<string, number>(propertyFields.map((field, index) => [field.key, index]))
+const brushGroupIndex = (field: FieldId) => {
+    const group = propertyField.get(field)?.brush?.group
+    return group ? brushGroups.indexOf(group) : brushGroups.length
+}
+const order = (field: FieldId) => tableIndex.get(field) ?? tableIndex.size
+
+/** Assignments in the order of the form that made the step: the Brush's groups, else the field table. */
+const inFormOrder = <T extends { field: FieldId }>(assignments: readonly T[], brush: boolean) =>
+    [...assignments].sort(
+        (a, b) =>
+            (brush ? brushGroupIndex(a.field) - brushGroupIndex(b.field) : 0) ||
+            order(a.field) - order(b.field),
+    )
 const placeholder = (text: string): DetailText => ({ text, placeholder: true })
 
 /**
@@ -237,7 +257,10 @@ const nativeRecord = (
         case 'nse.property.set': {
             changed(d.changed, operation.data.changed, false)
             collateral(operation.data)
-            for (const assignment of operation.data.assignments)
+            for (const assignment of inFormOrder(
+                operation.data.assignments,
+                operation.id === 'nse.object.brush',
+            ))
                 rows.push(
                     ...changeRow(
                         assignment.field,

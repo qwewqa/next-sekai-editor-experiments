@@ -156,10 +156,10 @@ R: Critical [isCritical]: ~Varies > Enabled
 
 #brush.note.many en
 T: Brushed 3 notes
-R: Flick Direction [flickDirection]: ~Varies > Up
-R: Critical [isCritical]: Disabled > Enabled
-R: Note Color [noteStyle]: ~Varies > Red
 R: Size [size]: 1 > 1.5
+R: Critical [isCritical]: Disabled > Enabled
+R: Flick Direction [flickDirection]: ~Varies > Up
+R: Note Color [noteStyle]: ~Varies > Red
 
 #property.note.lane en
 T: Set Lane to -2.5 on 1 note
@@ -212,9 +212,9 @@ R: Time Scale Ease [timeScaleEase]: ~Varies > Quad In
 
 #property.timeScale.multi en
 T: Edited 2 time scales
-R: Hide Notes [hideNotes]: ~Varies > Enabled
 R: Time Scale [timeScale]: 1 > 2.25
 R: Time Scale Transition [timeScaleTransition]: ~Varies > Scroll
+R: Hide Notes [hideNotes]: ~Varies > Enabled
 
 #property.camera.zoom en
 T: Set Camera Zoom to 1.25 on 3 camera events
@@ -222,8 +222,8 @@ R: Camera Zoom [cameraZoom]: ~Varies > 1.25
 
 #property.stageStyle.color en
 T: Edited 1 stage style event
-R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
 R: Lane Color [laneColor]: Default > Red
+R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
 R: Border Style (Left) [leftBorderStyle]: Default > Medium
 
 #property.bpm.value en
