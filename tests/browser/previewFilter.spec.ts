@@ -672,38 +672,55 @@ test.describe('the hosts', () => {
         await page.evaluate(installEditorFixture)
     }
 
-    test('the panel draws with the filter the test key names', async ({ page }, testInfo) => {
-        const host = testInfo.project.name === 'chromium-worker' ? 'worker' : 'main'
+    /** Shows the notes in the preview with Antialiasing as given, and takes its picture. */
+    const shoot = async (page: Page, antialias = true) => {
+        await page.evaluate((antialias) => {
+            const { settings, show, fixtures, view } = window.editorTest
+            settings.showPreview = true
+            settings.previewShowEffects = false
+            settings.previewShowTime = false
+            settings.previewControls = 'collapsed'
+            settings.previewAntialias = antialias
+            show(fixtures.notes, 0)
+            view.cursorTime = 1
+        }, antialias)
+        const viewport = page.locator('.preview-viewport').first()
+        await expect(viewport.locator('canvas').first()).toBeVisible()
+        const host = test.info().project.name === 'chromium-worker' ? 'worker' : 'main'
+        await expect.poll(() => page.evaluate(() => window.nsePreviewTest?.host)).toBe(host)
+        for (let i = 0; i < 2; i++)
+            await page.evaluate(async () => {
+                await window.editorTest.nextTick()
+                await new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+                )
+                await window.nsePreviewTest?.settled()
+            })
+        await page.waitForTimeout(400)
+        return viewport.screenshot({ animations: 'disabled' })
+    }
+
+    test('the panel draws with the filter the test key names', async ({ page }) => {
         const shots: Buffer[] = []
         for (const filter of [undefined, '3', 'today']) {
             await reopen(page, filter)
-            await page.evaluate(() => {
-                const { settings, show, fixtures, view } = window.editorTest
-                settings.showPreview = true
-                settings.previewShowEffects = false
-                settings.previewShowTime = false
-                settings.previewControls = 'collapsed'
-                show(fixtures.notes, 0)
-                view.cursorTime = 1
-            })
-            const viewport = page.locator('.preview-viewport').first()
-            await expect(viewport.locator('canvas').first()).toBeVisible()
-            await expect.poll(() => page.evaluate(() => window.nsePreviewTest?.host)).toBe(host)
-            for (let i = 0; i < 2; i++)
-                await page.evaluate(async () => {
-                    await window.editorTest.nextTick()
-                    await new Promise<void>((resolve) =>
-                        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-                    )
-                    await window.nsePreviewTest?.settled()
-                })
-            await page.waitForTimeout(400)
-            shots.push(await viewport.screenshot({ animations: 'disabled' }))
+            shots.push(await shoot(page))
         }
         // 4x4, 3x3 and one tap each draw the minified notes differently.
         expect(shots[0]!.equals(shots[1]!)).toBe(false)
         expect(shots[0]!.equals(shots[2]!)).toBe(false)
         expect(shots[1]!.equals(shots[2]!)).toBe(false)
+    })
+
+    test('a renderer created again without a reload reads the test key again', async ({ page }) => {
+        await reopen(page, undefined)
+        await shoot(page)
+        // An Antialiasing change creates a new renderer, in either host.
+        await page.evaluate(() => localStorage.setItem('nse.test.previewFilter', 'today'))
+        const changed = await shoot(page, false)
+        await reopen(page, 'today')
+        const reloaded = await shoot(page, false)
+        expect(changed.equals(reloaded)).toBe(true)
     })
 
     for (const filter of ['3', 'today'])

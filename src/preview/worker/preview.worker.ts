@@ -232,7 +232,6 @@ const handle = (message: ToPreviewWorker) => {
             // Test builds only: a release worker has no counters and no test flags.
             if (!testKeysOpen) return
             flags = message.flags
-            filter = message.filter
             if (message.test) installCounters()
             if (flags.throwOnStart)
                 setTimeout(() => {
@@ -244,6 +243,7 @@ const handle = (message: ToPreviewWorker) => {
             if (!message.canvas) return
             canvas = message.canvas
             antialias = message.antialias
+            if (testKeysOpen) filter = message.filter
             canvas.addEventListener('webglcontextlost', onLost)
             canvas.addEventListener('webglcontextrestored', onRestored)
             try {

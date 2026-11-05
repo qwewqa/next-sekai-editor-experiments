@@ -132,12 +132,7 @@ const startWorker = () => {
     const post = (message: ToPreviewWorker, transfer: Transferable[] = []) => {
         worker.postMessage(message, transfer)
     }
-    post({
-        type: 'start',
-        test: testKeysOpen && 'previewTest' in window,
-        flags,
-        filter: readPreviewFilter(),
-    })
+    post({ type: 'start', test: testKeysOpen && 'previewTest' in window, flags })
 
     /** The worker's renderer's limit, once its context is ready. */
     const maxViewportSize = shallowRef<{ width: number; height: number }>()
@@ -379,12 +374,14 @@ const startWorker = () => {
             const offscreen = transfer(canvas)
             if (!offscreen) return () => undefined
             attached++
-            post({ type: 'canvas', canvas: offscreen, antialias }, [offscreen])
+            post({ type: 'canvas', canvas: offscreen, antialias, filter: readPreviewFilter() }, [
+                offscreen,
+            ])
             wait('it did not start')
             return () => {
                 attached--
                 if (stopped) return
-                post({ type: 'canvas', antialias })
+                post({ type: 'canvas', antialias, filter: readPreviewFilter() })
                 releaseLater()
             }
         },
