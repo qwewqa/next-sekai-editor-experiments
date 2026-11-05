@@ -429,7 +429,7 @@ test('Generate captures only its three fresh notes and a repeat adds no step', a
 })
 
 // Editing a BPM to the value it has changes nothing, so it pushes no step.
-test('BPM producer captures initial anchor and actual first destination replacement, and an edit that changes nothing pushes no step', async ({
+test('BPM producer captures initial anchor and every destination replacement, and an edit that changes nothing pushes no step', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -475,13 +475,12 @@ test('BPM producer captures initial anchor and actual first destination replacem
         data: {
             subject: 'bpm',
             changed: { bpm: 1 },
-            displaced: { bpm: 1 },
+            displaced: { bpm: 2 },
             retainedInitialBpm: true,
         },
     })
     expect(result.bpms).toEqual([
         [0, 120],
-        [4, 140],
         [4, 120],
     ])
     expect(result.steps).toBe(1)
@@ -1022,14 +1021,13 @@ for (const mode of [
         expect(result.scales).toEqual([2, 3])
         expect(result.bpms).toEqual([
             [0, 120],
-            [4, 140],
             [4, 150],
         ])
         expect(await headOperation(page)).toMatchObject({
             id: 'nse.object.paste',
             data: {
                 placed: { note: 1, bpm: 1, timeScale: 2 },
-                displaced: { bpm: 1, timeScale: 2 },
+                displaced: { bpm: 2, timeScale: 2 },
                 ...mode,
             },
         })
