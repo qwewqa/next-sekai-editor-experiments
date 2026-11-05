@@ -303,7 +303,7 @@ test('the atlases take the tap cap of the filter, and pixel-art atlases a single
         [undefined, 4],
         [4, 4],
         [3, 3],
-        ['today', 0],
+        ['single', 0],
     ] as const) {
         const { renderer, taps } = createFixture(undefined, [], filter)
         renderer.setTexture(1, {} as ImageBitmap, false)

@@ -608,7 +608,9 @@ test.describe('the renderer', () => {
                         `${filter} taps at ${threshold} texels a pixel`,
                     ).toBeLessThanOrEqual(3)
                 }
-                expect(steady(second), `${filter} taps`).toBeLessThan(steady(results.single!.second))
+                expect(steady(second), `${filter} taps`).toBeLessThan(
+                    steady(results.single!.second),
+                )
             }
         })
 
