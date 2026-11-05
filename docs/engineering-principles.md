@@ -94,7 +94,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** No feature or element is free. Each is code to maintain, and one that users almost never need still costs them screen space, clicks or confusion.
 
-**Example.** The Groups and Stages managers had a collapsed "Current Group" / "Current Stage" row at the top of the list. It only revealed the current item’s path and its shown count, and the status bar’s scope label and the list’s current row already show both; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the "Use only items you are allowed to use." line the same day.
+**Example.** The Groups and Stages managers had a collapsed "Current Group" / "Current Stage" row at the top of the list. It only revealed the current item's path and its shown count, and the status bar's scope label and the list's current row already show both; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the "Use only items you are allowed to use." line the same day.
 
 ## 12. Users delete history; automatic processes do not
 

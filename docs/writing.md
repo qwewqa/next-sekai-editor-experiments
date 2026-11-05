@@ -38,10 +38,10 @@ These rules apply only to user-facing text: the strings in `src/i18n/`, Help, no
 
 - In English, use no contractions, and ’ for apostrophes. Buttons, command names, setting names and their choices are Title Case.
 - The other locales use what is idiomatic in their language for apostrophes, capitalization and quotation marks.
-- A label ends with an ellipsis when its action waits for the user’s answer before it happens: a value or a name (Scale Beats…, Save As…), a file (Choose…) or a confirmation (Delete Selected…). A confirmation that appears only in some cases, such as New’s when the chart has unsaved changes, does not count. A label that opens a window or a panel (Settings, Level Info, History) takes none, because the window is the result. The ellipsis tells the user that a question comes first. It would lose that meaning if every window had one. A dialog title drops it.
+- A label ends with an ellipsis when its action waits for the user's answer before it happens: a value or a name (Scale Beats…, Save As…), a file (Choose…) or a confirmation (Delete Selected…). A confirmation that appears only in some cases, such as New's when the chart has unsaved changes, does not count. A label that opens a window or a panel (Settings, Level Info, History) takes none, because the window is the result. The ellipsis tells the user that a question comes first. It would lose that meaning if every window had one. A dialog title drops it.
 - When running text names a command, leave out its ellipsis and end the sentence with its own full stop. Keep the ellipsis on a clickable label, and where the text quotes a UI label as such, as bold control names do in user documentation.
 - Put session names in quotes, “ ” in English. Put a file name in quotes only when it is the subject or starts the sentence: "Saved to coconut.nxsp", but "“coconut.nxsp” could not be written."
-- Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale’s existing terms.
+- Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale's existing terms.
 - "Saved" means saved as a project file, and "unsaved" means not saved as one. Work kept only in this browser, such as Recent Sessions and the Timeline, is "stored" or "kept", never "saved". An export does not save.
 - Say what happened and what to do, in words the user already knows.
   - Leave out internal terms such as chain, journal, worker, binding and slot. The maintainer docs may name them.

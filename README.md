@@ -72,7 +72,7 @@ page if any of these are unavailable.
 
 For syntax, the production build targets Chrome 111, Edge 111, Firefox 128,
 Safari 16 and iOS 16. When updating Vite, keep these targets set explicitly in the
-Vite configuration. Vite’s [default build targets](https://v8.vite.dev/config/build-options)
+Vite configuration. Vite's [default build targets](https://v8.vite.dev/config/build-options)
 can change between major releases.
 
 For other browser APIs, the editor uses feature detection or fallbacks.
