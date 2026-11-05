@@ -163,7 +163,7 @@
       },
       "switched": {
         "all": "已切换到所有群组",
-        "one": "已切换到 {0} 群组"
+        "one": "已切换到“{0}”群组"
       }
     },
     "generateSlideNotes": {
@@ -262,7 +262,7 @@
         "newer": "此关卡是为较新的引擎修订版制作的，此编辑器尚不支持。部分内容可能无法正确显示或保存。"
       },
       "refusals": {
-        "dynamicStages": "关卡使用了动态舞台，但未启用",
+        "dynamicStages": "使用了动态舞台，但未将其启用",
         "cyclicEventRef": "事件引用“{0}”形成循环",
         "cyclicSlideRef": "长按音符引用“{0}”形成循环",
         "refNotFound": "找不到引用“{0}”",
@@ -377,7 +377,7 @@
       },
       "switched": {
         "all": "已切换到所有舞台",
-        "one": "已切换到 {0} 舞台"
+        "one": "已切换到“{0}”舞台"
       }
     },
     "stop": {
@@ -426,19 +426,19 @@
     "zooms": {
       "zoomXIn": {
         "title": "横向放大",
-        "zoomed": "横向放大 10%"
+        "zoomed": "已横向放大 10%"
       },
       "zoomXOut": {
         "title": "横向缩小",
-        "zoomed": "横向缩小 10%"
+        "zoomed": "已横向缩小 10%"
       },
       "zoomYIn": {
         "title": "纵向放大",
-        "zoomed": "纵向放大 10%"
+        "zoomed": "已纵向放大 10%"
       },
       "zoomYOut": {
         "title": "纵向缩小",
-        "zoomed": "纵向缩小 10%"
+        "zoomed": "已纵向缩小 10%"
       }
     },
     "bpm": {
@@ -497,9 +497,9 @@
         "effect": "音效"
       },
       "fallback": {
-        "panel": "{0}：正在使用{1}。{2}",
+        "panel": "{0}：正在使用“{1}”。{2}",
         "panelStored": "{0}：正在使用“{1}”。{2}",
-        "row": "正在使用{0}。{1}",
+        "row": "正在使用“{0}”。{1}",
         "rowStored": "正在使用“{0}”。{1}"
       },
       "reason": {
@@ -507,11 +507,11 @@
         "storageUnavailable": "编辑器无法访问此浏览器中已存储的{0}。",
         "serverFailed": "无法从 {1} 重新下载{0}。",
         "invalid": "无法读取已存储的{0}。",
-        "failed": "无法加载{0}。",
+        "failed": "无法加载“{0}”。",
         "builtinFailed": "无法加载内置资源。"
       },
       "offline": "您已离线。",
-      "safeMode": "安全模式使用{0}。",
+      "safeMode": "安全模式使用“{0}”。",
       "choose": "选择…",
       "chooseSkin": "选择皮肤",
       "chooseParticle": "选择粒子",
@@ -522,8 +522,8 @@
       "remove": "移除",
       "removeStored": "移除…",
       "inUse": "使用中",
-      "removeInUse": "移除“{0}”？预览将改用默认选项。",
-      "removeUnused": "移除“{0}”？",
+      "removeInUse": "要移除“{0}”吗？预览将改用默认选项。",
+      "removeUnused": "要移除“{0}”吗？",
       "removeFailed": "无法移除此项目。",
       "chooseAgain": "重新选择…",
       "noneInFile": "此文件中没有{0}。",
@@ -844,7 +844,7 @@
       "overviewClick": "拖动小地图中的方框即可滚动，或点击小地图上的其他位置以跳转到该处。",
       "overview": "拖动小地图中的方框即可滚动，或点击小地图上的其他位置以跳转到该处。",
       "changes": "查看时间线步骤时，小地图上的标记会显示该步骤更改谱面的位置。",
-      "toggle": "显示或隐藏小地图，小地图展示整个谱面的概况。"
+      "toggle": "显示或隐藏展示整个谱面概况的小地图。"
     },
     "snapping": {
       "switch": "“吸附”在“绝对”和“相对”吸附之间切换，“轨道吸附”则为轨道切换这两种模式。",
@@ -921,7 +921,7 @@
         "off": "关",
         "fft": "快速傅里叶变换",
         "volume": "音量",
-        "changed": "您已更改波形可视化选项，请再次选择背景音乐文件以生效更改。"
+        "changed": "请再次选择背景音乐文件，以应用新的波形设置。"
       },
       "maxScrollX": "最大横向滚动范围（轨道）",
       "zeroWidthNotes": {
@@ -1194,7 +1194,7 @@
         "downloadFailed": "无法下载已恢复的内容。"
       },
       "openHistory": "打开历史记录",
-      "confirmClose": "关闭前询问未保存的更改",
+      "confirmClose": "有未保存的更改时在关闭前询问",
       "filePicker": {
         "title": "写入所选文件",
         "auto": "自动",
@@ -1246,12 +1246,12 @@
   "statusBar": {
     "group": {
       "all": "所有群组",
-      "one": "{0} 群组",
+      "one": "“{0}”群组",
       "shown": "显示 {0}/{1} 个群组"
     },
     "stage": {
       "all": "所有舞台",
-      "one": "{0} 舞台",
+      "one": "“{0}”舞台",
       "shown": "显示 {0}/{1} 个舞台"
     }
   },
@@ -1272,8 +1272,8 @@
     "brush": {
       "title": "笔刷",
       "deselected": "已取消选择所有对象",
-      "brushing": "正在刷 {0} 个对象",
-      "brushed": "已刷 {0} 个对象",
+      "brushing": "正在对 {0} 个对象应用笔刷",
+      "brushed": "已对 {0} 个对象应用笔刷",
       "sidebar": {
         "title": "笔刷属性"
       },
@@ -1298,7 +1298,7 @@
     "eraser": {
       "title": "橡皮擦",
       "deselected": "已取消选择所有对象",
-      "erasing": "擦除 {0} 个对象"
+      "erasing": "正在擦除 {0} 个对象"
     },
     "generateSlideNotes": {
       "title": "生成长按节点",
@@ -1309,11 +1309,11 @@
     },
     "note": {
       "title": "音符 #{0}",
-      "adding": "添加 {0} 个音符",
+      "adding": "正在添加 {0} 个音符",
       "added": "已添加 {0} 个音符",
-      "editing": "编辑 {0} 个音符",
+      "editing": "正在编辑 {0} 个音符",
       "edited": "已编辑 {0} 个音符",
-      "moving": "移动 {0} 个音符",
+      "moving": "正在移动 {0} 个音符",
       "moved": "已移动 {0} 个音符",
       "resized": "已调整 {0} 个音符的大小",
       "selected": "已选择 {0} 个音符",
@@ -1337,16 +1337,16 @@
     "select": {
       "title": "选择",
       "deselected": "已取消选择所有对象",
-      "selecting": "选择 {0} 个对象",
+      "selecting": "正在选择 {0} 个对象",
       "selected": "已选择 {0} 个对象",
-      "moving": "移动 {0} 个对象",
+      "moving": "正在移动 {0} 个对象",
       "moved": "已移动 {0} 个对象"
     },
     "slide": {
       "title": "长按音符 #{0}",
-      "adding": "添加 {0} 个音符",
-      "editing": "编辑 {0} 个音符",
-      "moving": "移动 {0} 个音符",
+      "adding": "正在添加 {0} 个音符",
+      "editing": "正在编辑 {0} 个音符",
+      "moving": "正在移动 {0} 个音符",
       "selected": "已选择 {0} 个音符",
       "sidebar": {
         "title": "默认长按音符属性"
@@ -1448,9 +1448,9 @@
     "continuedUndated": "已继续“{0}”。",
     "cleared": "以往访问的内容已丢失。浏览器清除了此网站的存储。",
     "inAppBrowser": "这似乎是应用内浏览器。部分功能可能无法使用，已存储的内容也可能被删除。如需保留内容，请在常用浏览器中打开此页面。",
-    "journalKept": "已将对“{0}”的已恢复更改保留为单独的会话。",
+    "journalKept": "已恢复对“{0}”的更改，并将其保留为单独的会话。",
     "fallback": "已恢复以往访问中未保存的内容。",
-    "fallbackLocal": "以往访问中未保存的内容在本地数据中。",
+    "fallbackLocal": "以往访问中未保存的内容在“本地数据”中。",
     "migrationFailed": "无法还原旧的自动保存。",
     "autoSave": "已从旧的自动保存继续“{0}”。",
     "journal": "已恢复对“{0}”的最后更改。",
@@ -1460,7 +1460,7 @@
     "sessionDeleted": "此会话已在另一个标签页或窗口中删除。",
     "autoSaveKept": "已将旧的自动保存中的“{0}”保留为单独的会话。",
     "autoSaveOpened": "已打开旧的自动保存。",
-    "journalFailed": "无法将已恢复的更改存储到其会话中。可在本地数据中找到。",
+    "journalFailed": "无法将已恢复的更改存储到其会话中。可在“本地数据”中找到。",
     "storageNearlyFull": "浏览器存储空间几乎已满。",
     "journalsFull": "以往访问中未保存的内容正在占满浏览器存储空间。",
     "sessionLater": "此会话需要更新版本的编辑器。",
@@ -1470,7 +1470,7 @@
     "bgmNotLoaded": "背景音乐未加载。",
     "saveUnfinished": "保存未能完成。您选择的文件可能是空的。",
     "exportUnfinished": "导出未能完成。您选择的文件可能是空的。",
-    "more": "另有 {0} 条在本地数据中",
+    "more": "另有 {0} 条在“本地数据”中",
     "localData": "本地数据",
     "openHistory": "打开历史记录",
     "copyLink": "复制链接",
@@ -1491,10 +1491,10 @@
     "safari": "Safari 会在 7 天未访问后删除已存储的内容。请保存以保留内容。"
   },
   "player": {
-    "started": "开始播放",
-    "stopped": "停止播放",
+    "started": "已开始播放",
+    "stopped": "已停止播放",
     "startFailed": "无法开始播放。请重试。",
-    "changed": "播放速度更改为 {0}×"
+    "changed": "已将播放速度更改为 {0}×"
   },
   "history": {
     "summary": {
@@ -1574,8 +1574,8 @@
       "deletedEvents": "已删除{0}事件",
       "cutEvents": "已剪切{0}事件"
     },
-    "undidSteps": "撤销了 {0} 步",
-    "redidSteps": "重做了 {0} 步",
+    "undidSteps": "已撤销 {0} 步",
+    "redidSteps": "已重做 {0} 步",
     "dynamicStages": {
       "title": "动态舞台",
       "message": "此功能需要动态舞台。是否启用？",
@@ -1604,7 +1604,7 @@
     "damaged": "已损坏",
     "needsNewer": "需要更新版本",
     "savedOn": "保存于 {0}",
-    "savedWeb": "保存于网页编辑器 ({0})",
+    "savedWeb": "保存于网页编辑器（{0}）",
     "savedWebAny": "保存于网页编辑器",
     "quoted": "“{0}”",
     "quotedField": "{0}",
@@ -1676,19 +1676,19 @@
       "changedOnNotes": "已更改 {0} 个音符的{1}",
       "deletedNotes": "已删除 {0} 个音符",
       "cutNotes": "已剪切 {0} 个音符",
-      "brushedNotes": "已刷 {0} 个音符",
+      "brushedNotes": "已对 {0} 个音符应用笔刷",
       "changedOnBpm": "已更改 {0} 个 BPM 的{1}",
       "deletedBpm": "已删除 {0} 个 BPM",
       "cutBpm": "已剪切 {0} 个 BPM",
-      "brushedBpm": "已刷 {0} 个 BPM",
+      "brushedBpm": "已对 {0} 个 BPM 应用笔刷",
       "changedOnTimeScales": "已更改 {0} 个时间尺度的{1}",
       "deletedTimeScales": "已删除 {0} 个时间尺度",
       "cutTimeScales": "已剪切 {0} 个时间尺度",
-      "brushedTimeScales": "已刷 {0} 个时间尺度",
+      "brushedTimeScales": "已对 {0} 个时间尺度应用笔刷",
       "changedOnEvents": "已更改 {0} 个{2}事件的{1}",
       "deletedEvents": "已删除 {0} 个{1}事件",
       "cutEvents": "已剪切 {0} 个{1}事件",
-      "brushedEvents": "已刷 {0} 个{1}事件",
+      "brushedEvents": "已对 {0} 个{1}事件应用笔刷",
       "addedGroups": "已添加 {0} 个群组",
       "duplicatedGroups": "已为 {0} 个群组创建副本",
       "deletedGroups": "已删除 {0} 个群组",
@@ -2113,23 +2113,23 @@
         "label": "每小节拍数"
       },
       "coverage": "适用于所选 {1} 个对象中的 {0} 个",
-      "selectOnly": "仅选择{1} ({0})",
+      "selectOnly": "仅选择{1}（{0}）",
       "unset": {
         "unchanged": "不更改",
         "auto": "自动",
         "copy": "复制"
       },
-      "unknown": "未知 ({0})",
+      "unknown": "未知（{0}）",
       "coverageChip": "{1} 个中的 {0} 个",
       "selectCovered": "仅选择适用的对象（{1} 个中的 {0} 个）",
       "descriptions": {
         "elevation": "高度，以轨道为单位。",
         "noteType": {
           "choices": {
-            "default": "根据在长按音符中的位置和“滑动方向”，作为点击、滑动、松手或中继点。",
+            "default": "根据在长按音符中的位置和“滑动方向”，作为点击、滑动、松开或中继点。",
             "trace": "描迹或描迹滑动。",
             "anchor": "没有判定的不可见音符。用于决定连接形状。",
-            "damage": "触碰时会产生 miss 的音符。",
+            "damage": "触碰时会造成 MISS 的音符。",
             "forceTick": "始终作为中继点，即使不在长按音符中。",
             "forceNonTick": "始终不作为中继点，即使在长按音符中间。"
           }
@@ -2143,7 +2143,7 @@
           "choices": {
             "active": "需要持续按住的连接。",
             "guide": "仅用于显示的连接。",
-            "damage": "触碰时会产生 miss 的连接。"
+            "damage": "触碰时会造成 MISS 的连接。"
           }
         },
         "connectorStyle": "覆盖连接颜色。",
@@ -2296,10 +2296,10 @@
     }
   },
   "offscreenNotes": {
-    "left": "屏幕左侧外的音符：{0}",
-    "right": "屏幕右侧外的音符：{0}",
-    "top": "屏幕上方外的音符：{0}",
-    "bottom": "屏幕下方外的音符：{0}"
+    "left": "超出屏幕左边缘的音符：{0}",
+    "right": "超出屏幕右边缘的音符：{0}",
+    "top": "超出屏幕上边缘的音符：{0}",
+    "bottom": "超出屏幕下边缘的音符：{0}"
   },
   "workspace": {
     "panels": {
@@ -2384,7 +2384,7 @@
     "groups": {
       "deleteFolder": "删除文件夹及群组…",
       "deleteFolderTitle": "删除文件夹及群组",
-      "deleteFolderMessage": "删除 {0} 文件夹及其中的 {1} 个群组和 {2} 个对象？",
+      "deleteFolderMessage": "要删除文件夹“{0}”及其中的 {1} 个群组和 {2} 个对象吗？",
       "renamed": "已将群组{0}重命名为{1}",
       "all": "所有群组",
       "showAll": "显示所有群组",
@@ -2392,8 +2392,8 @@
       "add": "添加群组",
       "deleteSelectedTitle": "删除群组",
       "deleteSelectedFoldersTitle": "删除文件夹及群组",
-      "deleteSelectedMessage": "删除所选的 {0} 个群组及其中的 {1} 个对象？",
-      "deleteSelectedFoldersMessage": "删除所选的 {0} 个文件夹、{1} 个群组及其中的 {2} 个对象？",
+      "deleteSelectedMessage": "要删除所选的 {0} 个群组及其中的 {1} 个对象吗？",
+      "deleteSelectedFoldersMessage": "要删除所选的 {0} 个文件夹、{1} 个群组及其中的 {2} 个对象吗？",
       "duplicated": "已为{0}群组创建副本",
       "propertySet": "已将群组{0}的{1}设为{2}",
       "propertyCleared": "已清除群组{0}的{1}"
@@ -2401,7 +2401,7 @@
     "stages": {
       "deleteFolder": "删除文件夹及舞台…",
       "deleteFolderTitle": "删除文件夹及舞台",
-      "deleteFolderMessage": "删除 {0} 文件夹及其中的 {1} 个舞台和 {2} 个对象？",
+      "deleteFolderMessage": "要删除文件夹“{0}”及其中的 {1} 个舞台和 {2} 个对象吗？",
       "renamed": "已将舞台{0}重命名为{1}",
       "all": "所有舞台",
       "showAll": "显示所有舞台",
@@ -2411,8 +2411,8 @@
       "enable": "启用动态舞台",
       "deleteSelectedTitle": "删除舞台",
       "deleteSelectedFoldersTitle": "删除文件夹及舞台",
-      "deleteSelectedMessage": "删除所选的 {0} 个舞台及其中的 {1} 个对象？",
-      "deleteSelectedFoldersMessage": "删除所选的 {0} 个文件夹、{1} 个舞台及其中的 {2} 个对象？",
+      "deleteSelectedMessage": "要删除所选的 {0} 个舞台及其中的 {1} 个对象吗？",
+      "deleteSelectedFoldersMessage": "要删除所选的 {0} 个文件夹、{1} 个舞台及其中的 {2} 个对象吗？",
       "duplicated": "已为{0}舞台创建副本",
       "propertySet": "已将舞台{0}的{1}设为{2}"
     },
@@ -2697,8 +2697,8 @@
     "lastNote": "最后一个音符",
     "bgmEnd": "背景音乐结束",
     "copyText": "复制文本",
-    "copiedText": "已复制统计",
-    "notCopiedText": "无法复制统计",
+    "copiedText": "已复制统计信息",
+    "notCopiedText": "无法复制统计信息",
     "shareImage": "分享图像…",
     "shareImageTitle": "分享图像",
     "link": "链接",
@@ -2728,8 +2728,8 @@
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "此文件由更新版本的 {0} 创建。",
     "replaceDamaged": "此文件已损坏。",
-    "replaceHoldsEarlier": "它包含此浏览器中已不再存储的较早时间线步骤。",
-    "replaceMayHoldEarlier": "它可能包含此浏览器中已不再存储的较早时间线步骤。",
+    "replaceHoldsEarlier": "此文件包含此浏览器中已不再存储的较早时间线步骤。",
+    "replaceMayHoldEarlier": "此文件可能包含此浏览器中已不再存储的较早时间线步骤。",
     "keepEditing": "继续编辑"
   },
   "name": {
@@ -2760,7 +2760,7 @@
     "peekCodeFailed": "无法查看此步骤。请重新加载页面以重试。",
     "peekSessionFailed": "无法查看此会话",
     "openHistory": "打开历史记录",
-    "earlierInHistory": "时间线中较早的步骤在历史记录中",
+    "earlierInHistory": "时间线中较早的步骤在“历史记录”中",
     "savedCurrent": "已将当前版本保存到 {0}"
   },
   "entry": {
@@ -2830,7 +2830,7 @@
       "body": "此文件的大小为 {0}。打开它可能需要很长时间，并占用此浏览器的大量存储空间。",
       "open": "仍然打开"
     },
-    "unsavedChanges": "已打开 {0}。您在 {1} 对它有未保存的更改。",
+    "unsavedChanges": "已打开 {0}。您在 {1} 对此文件所做的更改尚未保存。",
     "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在“最近会话”中。",
     "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在“最近会话”中。",
     "restoreIt": "还原会话",
