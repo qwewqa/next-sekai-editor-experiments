@@ -76,9 +76,9 @@ const slot = (color) =>
 // 1.28 times, at 144 and 108 texels per lane on screen: [texture width, half the art's side].
 const kiteRoles = { slide: [128, 0.7], trace: [88, 0.64] }
 // The face's outline fades over 0.75 texel, as the base's kites fade into their glow, so a small
-// kite flickers less as it moves. The white facet stays sharp, and an alpha slope keeps the inside
-// fully opaque. The view is scale times the kite's 64 units across. A normal kite's soft edge is
-// stored in its face colour.
+// kite flickers less as it moves. The white facet stays sharp, and a slight alpha gain keeps the
+// inside fully opaque. The kite is 64 units across at scale 1. A normal kite's soft edge is stored
+// in its face colour.
 const kiteImage = (template, vars, role, scale = 1) => {
     const [width, half] = kiteRoles[role]
     const side = half * scale
@@ -361,9 +361,8 @@ const bar = (kind, color, { edge = 'none', light } = {}) => {
         { transform: basicBox },
     )
 }
-// A damage note's rim is its face a quarter of the way to black, near the base's dark edge, so the
-// bar's edge steps down to the stage. Black keeps its light inner colour as its rim, without which
-// its bar would not show.
+// A damage note's rim is its face colour a quarter of the way to black, near the base's dark edge.
+// Black keeps its light inner colour as the rim, since a dark rim would hide its bar.
 const damageEdge = (face, color) =>
     color === 'Black' ? styleColors('Black')[1] : mix(face, '#000000', 0.25)
 const damageImage = (part, color, edge) =>
