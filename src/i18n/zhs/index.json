@@ -329,10 +329,10 @@
         "title": "向上滚动"
       },
       "scrollPageDown": {
-        "title": "向下滚动页面"
+        "title": "向下翻页"
       },
       "scrollPageUp": {
-        "title": "向上滚动页面"
+        "title": "向上翻页"
       }
     },
     "select": {
@@ -399,7 +399,7 @@
       "undid": "已撤销“{0}”"
     },
     "utilities": {
-      "title": "工具"
+      "title": "实用工具"
     },
     "visibilities": {
       "cycle": {
@@ -628,14 +628,14 @@
       "title": "帮助",
       "touchscreen": {
         "title": "触控屏",
-        "longPress": "长按对象即可打开右键菜单。",
+        "longPress": "长按对象即可打开上下文菜单。",
         "scroll": "双指拖动即可滚动。纵向捏合可纵向缩放，横向捏合可横向缩放。",
         "quickScroll": "用单指在谱面边缘的快速滚动区域内拖动即可滚动。",
         "gestures": "双指轻触即可取消选择。三指轻触即可开始或停止播放。"
       },
       "mouse": {
         "title": "鼠标",
-        "contextMenu": "右键单击对象即可打开右键菜单，按住右键拖动即可使用“选择”。",
+        "contextMenu": "右键单击对象即可打开上下文菜单，按住右键拖动即可使用“选择”。",
         "secondary": "右键单击或按住右键拖动即可使用“{0}”。",
         "scrollX": "按住 Shift 并转动鼠标滚轮可横向滚动。",
         "zoom": "按住 Ctrl 并转动鼠标滚轮可纵向缩放，按住 Ctrl 和 Shift 并转动滚轮可横向缩放。",
@@ -958,7 +958,7 @@
         "title": "辅助工具",
         "eraser": "橡皮擦",
         "select": "选择",
-        "selectContextMenu": "选择 + 右键菜单"
+        "selectContextMenu": "选择 + 上下文菜单"
       },
       "smoothScrolling": "平滑滚动"
     },
@@ -1034,7 +1034,7 @@
       },
       "scrollInertia": "滚动惯性",
       "resizeHandles": "显示调整大小手柄",
-      "longPressContextMenu": "长按打开右键菜单"
+      "longPressContextMenu": "长按打开上下文菜单"
     },
     "panels": {
       "title": "面板",
@@ -1096,7 +1096,7 @@
         "choices": {
           "eraser": "右键单击可删除对象，按住右键拖动可删除区域内的对象。",
           "select": "可用鼠标右键选择、移动或调整对象大小。",
-          "selectContextMenu": "右键单击时打开右键菜单，按住右键拖动时可选择、移动或调整对象大小。"
+          "selectContextMenu": "右键单击时打开上下文菜单，按住右键拖动时可选择、移动或调整对象大小。"
         }
       },
       "beatDisplay": {
@@ -1383,7 +1383,7 @@
     }
   },
   "utilities": {
-    "title": "工具",
+    "title": "实用工具",
     "coverEditor": {
       "title": "封面编辑器",
       "cover": "封面",
@@ -2418,7 +2418,7 @@
     },
     "properties": {
       "sections": "属性分区",
-      "selection": "选择",
+      "selection": "所选对象",
       "tool": "工具",
       "view": "视图",
       "noTool": "当前工具没有设置。",
