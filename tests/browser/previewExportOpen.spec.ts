@@ -295,6 +295,8 @@ test('a particle atlas that arrives while Export Video is open draws its effects
     await page.evaluate(() => (window.editorTest.view.cursorTime = 1.2))
     await settle(page)
     expect((await account(page)).frames.at(-1)!.slots).toEqual([0, 3])
+    // The same moment with Show Effects on, but without the particle's pixels.
+    const withoutParticle = await picture(page)
     await openVideoDialog(page)
     await expect.poll(() => bytes(page)).toBe(0)
     releaseParticle()
@@ -308,13 +310,9 @@ test('a particle atlas that arrives while Export Video is open draws its effects
     expect(first!.slots).toEqual([0, 1, 3])
     await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(3)
     await settle(page)
-    const withEffects = await picture(page)
+    // The first frame after closing shows the particle's pixels.
+    expect((await picture(page)).equals(withoutParticle)).toBe(false)
     expect(await frameCount(page)).toBe(count + 1)
-    // The effect's pixels are on screen: without effects the picture differs.
-    await page.evaluate(() => (window.editorTest.settings.previewShowEffects = false))
-    await settle(page)
-    expect((await account(page)).frames.at(-1)!.slots).not.toContain(1)
-    expect((await picture(page)).equals(withEffects)).toBe(false)
 })
 
 /** The preview's pixels that are pure red, from a screenshot. */
