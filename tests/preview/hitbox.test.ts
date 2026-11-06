@@ -17,6 +17,7 @@ import {
     computeSlideInputBounds,
     createGeometryContext,
     damageTickInputStartBeat,
+    drawHitboxes,
     getHiddenTickHitboxes,
     getInputWindow,
     peekHitboxIndex,
@@ -886,6 +887,32 @@ test('nothing is scheduled or indexed for hitboxes while the option is off', () 
     assert.ok(overlay(render(compiled, 2.5)).length > 0)
     assert.ok(reads > 0)
     assert.ok(peekHitboxIndex(compiled))
+})
+
+test('Test Aspect Ratio redraws cached note hitboxes at its size, and back', () => {
+    const source = chart([[note(2)], [note(2.5, { left: 1 })]])
+    const hitboxes = (compiled: PreviewChart, testAspect: boolean) => {
+        const draws: Quad[] = []
+        drawHitboxes(
+            (sprite, quad, _z, a) => {
+                if (sprite && a > 0) draws.push(quad)
+            },
+            skin,
+            compiled,
+            createViewport(width, height, testAspect),
+            1.9,
+            false,
+        )
+        return draws
+    }
+    const compiled = preview(source)
+    const off = hitboxes(compiled, false)
+    assert.ok(off.length > 0)
+    const on = hitboxes(compiled, true)
+    assert.notDeepEqual(on, off)
+    // The same as a chart drawn with the mode on from the start.
+    assert.deepEqual(on, hitboxes(preview(source), true))
+    assert.deepEqual(hitboxes(compiled, false), off)
 })
 
 test('toggling hitboxes only adds the overlay without recompiling or mutating the chart', () => {
