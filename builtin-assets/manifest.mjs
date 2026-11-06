@@ -21,7 +21,7 @@ import {
 export const productName = product.name
 
 /** Bumped when the set's art changes. */
-export const setVersion = 2
+export const setVersion = 1
 
 /**
  * The original names (tests/fixtures/next-sekai-originals.json) the set leaves out: the stage that

@@ -2,7 +2,7 @@
     "version": 1,
     "set": {
         "name": "nse-builtin",
-        "version": 2
+        "version": 1
     },
     "files": {
         "builtin-assets/out/icon/app-icon-1024.png": {
@@ -46,19 +46,19 @@
             "bytes": 46109
         },
         "public/builtin/background.scp": {
-            "sha256": "372cfda5d2d0314a8df311d73a898571c14c915097be178d24f83ad12fec2970",
+            "sha256": "6b095a34da66b47fdff498262149d5c742f14ae64aec13533d18c21c5ba3a5a4",
             "bytes": 406842
         },
         "public/builtin/effect.scp": {
-            "sha256": "b00ef7476fc03b02dababc2f9980d1b885a743eab27b174d989f6071bb9902c7",
+            "sha256": "12f0a155665497263e9f449f2f8527add709af646a8b1bcbb0ef6f677b64d95e",
             "bytes": 353506
         },
         "public/builtin/particle.scp": {
-            "sha256": "4ba9106ad7ad0908c8611de7ad4d64f592c0d0c16a98add0f7bb3cadf5b15995",
-            "bytes": 123500
+            "sha256": "f9ad0139ce8635b358e9508fc48686a7099ec264d10f301bd8d96ebdbbd7219a",
+            "bytes": 123502
         },
         "public/builtin/skin.scp": {
-            "sha256": "9eef15b1015cc62a77bf8e3733936aac5ffaf279a8652b5bb9b1d5e6253695da",
+            "sha256": "655e0d87b05ca0a7a2ea38e66f446fdca36f398b9ee581ca2a251fe9bd0ab3a1",
             "bytes": 2013869
         }
     },
