@@ -467,8 +467,47 @@ test('both hosts draw the same pixels, paused and playing, with everything selec
     const pages = await pair(browser)
     const compare = async (label: string) => {
         const [main, worker] = (await Promise.all(pages.map(shot))) as [Buffer, Buffer]
-        // Both images, kept with the failure output, so a mismatch on a CI runner shows what differs.
-        if (!worker.equals(main))
+        const matches = async () => {
+            if (browserName === 'chromium') {
+                expect(worker.equals(main), label).toBe(true)
+                return
+            }
+            // Firefox's contexts differ by a few levels at some edge pixels, any two of them.
+            const { differing, maxLevel, pixels } = await pages[0].evaluate(
+                async ([a, b]) => {
+                    const decode = async (png: string) => {
+                        const image = new Image()
+                        image.src = `data:image/png;base64,${png}`
+                        await image.decode()
+                        const canvas = document.createElement('canvas')
+                        canvas.width = image.naturalWidth
+                        canvas.height = image.naturalHeight
+                        const ctx = canvas.getContext('2d')!
+                        ctx.drawImage(image, 0, 0)
+                        return ctx.getImageData(0, 0, canvas.width, canvas.height).data
+                    }
+                    const [x, y] = await Promise.all([decode(a), decode(b)])
+                    let differing = 0
+                    let maxLevel = 0
+                    for (let i = 0; i < x.length; i += 4) {
+                        let level = 0
+                        for (let c = 0; c < 4; c++)
+                            level = Math.max(level, Math.abs(x[i + c]! - y[i + c]!))
+                        if (level) differing++
+                        maxLevel = Math.max(maxLevel, level)
+                    }
+                    return { differing, maxLevel, pixels: x.length / 4 }
+                },
+                [main.toString('base64'), worker.toString('base64')] as const,
+            )
+            expect(maxLevel, label).toBeLessThanOrEqual(8)
+            expect(differing / pixels, label).toBeLessThan(0.005)
+        }
+        try {
+            await matches()
+        } catch (error) {
+            // Both images, kept with the failure output, so a mismatch on a CI runner shows what
+            // differs.
             for (const [host, body] of [
                 ['main', main],
                 ['worker', worker],
@@ -477,40 +516,8 @@ test('both hosts draw the same pixels, paused and playing, with everything selec
                 await writeFile(path, body)
                 await test.info().attach(`${label} ${host}`, { path, contentType: 'image/png' })
             }
-        if (browserName === 'chromium') {
-            expect(worker.equals(main), label).toBe(true)
-            return
+            throw error
         }
-        // Firefox's contexts differ by a few levels at some edge pixels, any two of them.
-        const { differing, maxLevel, pixels } = await pages[0].evaluate(
-            async ([a, b]) => {
-                const decode = async (png: string) => {
-                    const image = new Image()
-                    image.src = `data:image/png;base64,${png}`
-                    await image.decode()
-                    const canvas = document.createElement('canvas')
-                    canvas.width = image.naturalWidth
-                    canvas.height = image.naturalHeight
-                    const ctx = canvas.getContext('2d')!
-                    ctx.drawImage(image, 0, 0)
-                    return ctx.getImageData(0, 0, canvas.width, canvas.height).data
-                }
-                const [x, y] = await Promise.all([decode(a), decode(b)])
-                let differing = 0
-                let maxLevel = 0
-                for (let i = 0; i < x.length; i += 4) {
-                    let level = 0
-                    for (let c = 0; c < 4; c++)
-                        level = Math.max(level, Math.abs(x[i + c]! - y[i + c]!))
-                    if (level) differing++
-                    maxLevel = Math.max(maxLevel, level)
-                }
-                return { differing, maxLevel, pixels: x.length / 4 }
-            },
-            [main.toString('base64'), worker.toString('base64')] as const,
-        )
-        expect(maxLevel, label).toBeLessThanOrEqual(8)
-        expect(differing / pixels, label).toBeLessThan(0.005)
     }
     // Each host draws a new frame for each change, so no comparison is of stale frames.
     const drawn = (page: Page) =>
