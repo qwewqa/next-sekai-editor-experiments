@@ -7,6 +7,7 @@ import {
     bodyColors,
     colorNames,
     damageFace,
+    darker,
     diamondColors,
     guideColor,
     laneAlpha,
@@ -56,20 +57,24 @@ const strip = (color, alpha) =>
         { color, alpha, qa: alpha / 16, ha: alpha / 4, ta: (alpha * 9) / 16 },
         { stretch: true },
     )
-// A connector band, lighter towards its sides. The sides are hard: one clear texel at each edge of
-// the quad, then the band, so texture filtering antialiases the edge and the quad's own edge has no
-// step to alias without MSAA. At 256 texels across, the edge is about a pixel wide on a connector 2
-// to 3 lanes wide at the judge line, as the base's is.
+// A connector band, a middle colour that runs to a side colour at each side. The sides are hard:
+// one clear texel at each edge of the quad, then the band, so texture filtering antialiases the edge
+// and the quad's own edge has no step to alias without MSAA. At 256 texels across, the edge is about
+// a pixel wide on a connector 2 to 3 lanes wide at the judge line, as the base's is.
 const bandWidth = 256
-const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
-    image('band', { color, light, alpha, w: bandWidth, inner: bandWidth - 2 }, { stretch: true })
-// A connector at rest and held, in the base set's colours: [rest, held].
-const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
-// A damage connector: the base's colours mixed further towards black, as the damage notes are.
-// Black's is left as it is, already as dark as the stage.
-const damageConnectorDarken = 0.25
-const damageBands = (colors) =>
-    bands(colors.map((color) => mix(color, '#000000', damageConnectorDarken)))
+const band = (middle, side = mix(middle, '#ffffff', 0.35)) =>
+    image(
+        'band',
+        { middle, side, alpha: 0.8, w: bandWidth, inner: bandWidth - 2 },
+        { stretch: true },
+    )
+// A connector at rest and held, in the base set's colours and lighter towards its sides.
+const bands = ([rest, held]) => [band(rest), band(held, mix(held, '#ffffff', 0.3))]
+// A damage connector is darker towards its sides instead: the base's colour in the middle, and at
+// the sides the same hue and chroma at a lower OKLab lightness. Black keeps the light sides, as
+// darker ones would be lost on the stage.
+const damageSideDrop = 0.13
+const damageBands = (colors) => colors.map((color) => band(color, darker(color, damageSideDrop)))
 // Slot glows in the base set's glow colours: [at the note, middle, top], up to a height of the cell.
 const glow = ([light, color, top], height = 1) =>
     image(
