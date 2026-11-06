@@ -77,6 +77,7 @@ for (const antialias of [false, true])
                             showEffects: true,
                             showHitboxes: false,
                             showCombo: true,
+                            testAspect: false,
                         }
                         const target = renderer.setRenderTarget({ width, height, antialias })!
                         const result = drawPreviewFrame(
@@ -240,6 +241,7 @@ test('frame results distinguish missing resources, invalid sizes, errors and con
             showEffects: false,
             showHitboxes: false,
             showCombo: false,
+            testAspect: false,
         }
         const draw = (width = 160) =>
             drawPreviewFrame(

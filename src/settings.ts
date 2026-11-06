@@ -170,6 +170,7 @@ const settingsProperties = {
     previewShowEffects: Type.Boolean({ default: true }),
     previewShowTime: Type.Boolean({ default: true }),
     previewShowCombo: Type.Boolean(),
+    previewTestAspect: Type.Boolean(),
     // Step size of the compact preview stepper, in ms.
     previewStepSize: Type.Union([Type.Literal(1), Type.Literal(10), Type.Literal(100)], {
         default: 10,

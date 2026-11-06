@@ -82,6 +82,7 @@ const jobOptions = () =>
             noteSpeed: 6,
             showEffects: true,
             showCombo: true,
+            testAspect: false,
             backdrop: [0, 0, 0],
         },
         buffers: { sfx: {} },

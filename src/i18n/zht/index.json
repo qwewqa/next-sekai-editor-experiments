@@ -1002,6 +1002,7 @@
         "overlay": "疊加"
       },
       "aspectRatio": "長寬比",
+      "testAspect": "測試長寬比",
       "controls": {
         "title": "預覽設定面板",
         "auto": "自動",
@@ -1138,6 +1139,7 @@
       },
       "previewNoteSpeed": "預覽中音符接近的速度，範圍為 1 到 12。",
       "previewShowHitboxes": "是否顯示用於判定音符和滑條的範圍。",
+      "previewTestAspect": "是否將預覽縮小至一半尺寸，並顯示 21:9、16:9 和 4:3 螢幕的邊框。",
       "previewShowEffects": "音符被擊中時及按住滑條期間，是否在預覽中顯示粒子與發光效果。",
       "previewAntialias": "是否在預覽中平滑鋸齒邊緣並減少閃爍。",
       "previewTransportPosition": {

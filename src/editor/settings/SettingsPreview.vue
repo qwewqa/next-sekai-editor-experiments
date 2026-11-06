@@ -58,6 +58,11 @@ const openAssets = () => {
         />
         <ToggleField v-model="settings.previewShowTime" :label="i18n.settings.preview.showTime" />
         <ToggleField v-model="settings.previewShowCombo" :label="i18n.settings.preview.showCombo" />
+        <ToggleField
+            v-model="settings.previewTestAspect"
+            :label="i18n.settings.preview.testAspect"
+            :description="i18n.settings.descriptions.previewTestAspect"
+        />
         <SelectField
             v-model="settings.previewAspectRatio"
             :label="i18n.settings.preview.aspectRatio"

@@ -1002,6 +1002,7 @@
         "overlay": "Superposées"
       },
       "aspectRatio": "Rapport d’aspect",
+      "testAspect": "Tester le format d’image",
       "controls": {
         "title": "Panneau des paramètres de l’aperçu",
         "auto": "Auto",
@@ -1138,6 +1139,7 @@
       },
       "previewNoteSpeed": "Vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
       "previewShowHitboxes": "Affichage des zones utilisées pour juger les notes et les slides.",
+      "previewTestAspect": "Affichage de l’aperçu à la moitié de sa taille, avec des repères pour les écrans 21:9, 16:9 et 4:3.",
       "previewShowEffects": "Affichage de particules et de lueurs dans l’aperçu lorsque les notes sont touchées et pendant que les slides sont maintenus.",
       "previewAntialias": "Lissage des contours en escalier et réduction du scintillement dans l’aperçu.",
       "previewTransportPosition": {

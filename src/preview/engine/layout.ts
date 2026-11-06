@@ -30,6 +30,8 @@ export const NOTE_SLIM_EDGE_W = 0.125
 
 export const TARGET_ASPECT_RATIO = 16 / 9
 
+export const TEST_ASPECT_SCALE = 0.5
+
 export const FIELD_T_FACTOR = 0.5 + 1.15875 * (47 / 1176)
 export const FIELD_B_FACTOR = 0.5 - 1.15875 * (803 / 1176)
 export const FIELD_W_FACTOR = (1.15875 * (1420 / 1176)) / TARGET_ASPECT_RATIO / 12
@@ -104,6 +106,7 @@ export type PreviewViewport = Readonly<{
     screenW: number
     screenH: number
     screenPixelSize: number
+    testAspect: boolean
 }>
 
 export type PreviewLayout = Readonly<
@@ -122,7 +125,11 @@ export type PreviewLayout = Readonly<
         }
 >
 
-export const createViewport = (displayWidth: number, displayHeight: number): PreviewViewport => {
+export const createViewport = (
+    displayWidth: number,
+    displayHeight: number,
+    testAspect = false,
+): PreviewViewport => {
     const aspectRatio = displayWidth / displayHeight
     return {
         fieldW: 2 * Math.min(aspectRatio, TARGET_ASPECT_RATIO),
@@ -130,6 +137,7 @@ export const createViewport = (displayWidth: number, displayHeight: number): Pre
         screenW: 2 * aspectRatio,
         screenH: 2,
         screenPixelSize: 2 / displayHeight,
+        testAspect,
     }
 }
 
@@ -251,12 +259,15 @@ export const createLayout = (
     const baseNoteH = NOTE_H * (0.6 * base.sizeZoom + 0.4)
     const flatNoteH = (STAGE_WIDTH_MID * base.wScale) / (2 * Math.abs(base.hScale))
     const noteH = lerp(flatNoteH, baseNoteH, tilt)
-    const zoomed = zoomedLayoutTransform(
-        base,
-        camera.zoom,
-        camera.zoomTarget,
-        camera.zoomAnchor,
-        camera.rotate,
+    const zoomed = applyTestAspect(
+        viewport,
+        zoomedLayoutTransform(
+            base,
+            camera.zoom,
+            camera.zoomTarget,
+            camera.zoomAnchor,
+            camera.rotate,
+        ),
     )
     return {
         ...viewport,
@@ -319,6 +330,21 @@ export const layoutTransformAtCamera = (
         camera.zoomAnchor,
         camera.rotate,
     )
+
+// sekai/lib/layout.py apply_test_aspect and refresh_layout: the camera's result at half size.
+export const applyTestAspect = (
+    viewport: PreviewViewport,
+    transform: LayoutTransform,
+): LayoutTransform =>
+    viewport.testAspect
+        ? {
+              ...transform,
+              t: transform.t * TEST_ASPECT_SCALE,
+              wScale: transform.wScale * TEST_ASPECT_SCALE,
+              hScale: transform.hScale * TEST_ASPECT_SCALE,
+              xTranslate: transform.xTranslate * TEST_ASPECT_SCALE,
+          }
+        : transform
 
 export const currentLayoutTransform = (context: PreviewLayout): LayoutTransform => ({
     t: context.t,

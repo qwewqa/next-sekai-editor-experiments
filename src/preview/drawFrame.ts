@@ -26,6 +26,7 @@ export type PreviewFrameInput = {
     showEffects: boolean
     showHitboxes: boolean
     showCombo: boolean
+    testAspect: boolean
     backdrop?: readonly [number, number, number]
     background?: {
         aspectRatio: number
@@ -70,6 +71,7 @@ export const drawPreviewFrame = (
             input.displayHeight,
             input.leftLimit,
             input.background,
+            input.testAspect,
         ),
     })
     if (renderer.isContextLost()) return failed('context')
@@ -113,6 +115,7 @@ export const drawPreviewFrame = (
             input.showHitboxes,
             input.background,
             input.showCombo,
+            input.testAspect,
         )
         renderer.compositeBackground(quad, input)
         outline?.draw(

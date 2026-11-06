@@ -34,6 +34,7 @@ import { drawHitboxes } from './hitbox'
 import { LAYER_SLOT_EFFECT, LAYER_SLOT_GLOW_EFFECT, getZ } from './layer'
 import {
     FlickDirection,
+    TEST_ASPECT_SCALE,
     approach,
     blendStageTransform,
     computeStageTransform,
@@ -56,6 +57,7 @@ import {
     transformedVecAt,
     type CameraChange,
     type FlickDirectionValue,
+    type PreviewViewport,
     type StageScreenTransform,
     type StageTransform,
 } from './layout'
@@ -102,6 +104,7 @@ import { findSlideConnector } from './slide'
 import {
     drawStageWithProps,
     drawStaticStage,
+    drawTestAspectOverlay,
     getStageProps,
     getStageYOffset,
     resolveJudgeLineStyle,
@@ -209,9 +212,10 @@ export const renderPreviewFrame = (
     showHitboxes = false,
     background?: { aspectRatio: number; fit: BackgroundFit },
     showCombo = false,
+    testAspect = false,
 ) => {
     const hasReached = (target: number) => (leftLimit ? now > target : now >= target)
-    const viewport = createViewport(displayWidth, displayHeight)
+    const viewport = createViewport(displayWidth, displayHeight, testAspect)
     // Frames are drawn at the right limit (dynamic_stage, refresh_layout); a paused
     // frame shows the instant before, the left limit. Note-time values are held.
     const frameLimit = { rightLimit: !leftLimit }
@@ -308,6 +312,7 @@ export const renderPreviewFrame = (
     } else {
         drawStaticStage(context, draw, skin)
     }
+    drawTestAspectOverlay(viewport, draw, skin)
 
     const groupPreempt = (note: PreviewNote) =>
         preempts[note.groupIndex] ?? preemptTime(noteSpeed, 0)
@@ -1463,7 +1468,17 @@ export const renderPreviewFrame = (
     else skipCombo(renderer)
 
     renderer.flush()
-    return layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit)
+    return testAspectBackground(
+        viewport,
+        layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit),
+    )
+}
+
+// sekai/lib/layout.py refresh_layout: the background scaled about the screen's center.
+const testAspectBackground = (viewport: PreviewViewport, quad: Quad): Quad => {
+    if (!viewport.testAspect) return quad
+    const scale = (v: Vec) => vec(v.x * TEST_ASPECT_SCALE, v.y * TEST_ASPECT_SCALE)
+    return { bl: scale(quad.bl), br: scale(quad.br), tl: scale(quad.tl), tr: scale(quad.tr) }
 }
 
 const noCameras: CameraChange[] = []
@@ -1479,8 +1494,12 @@ export const previewBackgroundQuad = (
     displayHeight: number,
     leftLimit: boolean,
     background?: { aspectRatio: number; fit: BackgroundFit },
+    testAspect = false,
 ) => {
-    const viewport = createViewport(displayWidth, displayHeight)
+    const viewport = createViewport(displayWidth, displayHeight, testAspect)
     const camera = getCameraInfo(viewport, cameras, now, { rightLimit: !leftLimit })
-    return layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit)
+    return testAspectBackground(
+        viewport,
+        layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit),
+    )
 }

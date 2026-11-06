@@ -1,8 +1,9 @@
 import type { ZKey } from '../gl'
 import type { JudgmentSpriteSet, PreviewSkin, Sprite } from '../skin'
 import type { PreviewFrameContext } from './context'
-import { LAYER_STAGE, getZ, getZAlt } from './layer'
+import { LAYER_OVERLAY, LAYER_STAGE, getZ, getZAlt } from './layer'
 import {
+    TEST_ASPECT_SCALE,
     approach,
     computeStageTransform,
     currentLayoutTransform,
@@ -568,6 +569,42 @@ const isCollapsedBorder = (q: Quad) =>
 
 export const resolveJudgeLineStyle = (style: Transition<number>) =>
     style.progress < 0.5 ? style.start : style.end
+
+const TEST_ASPECT_BOX_EDGE = 0.004
+
+// sekai/lib/stage.py draw_aspect_box: where a screen of `ratio` would end around the
+// half-size field. The preview's field is always locked to 16:9.
+const drawAspectBox = (
+    viewport: PreviewViewport,
+    draw: Draw,
+    sprite: Sprite | undefined,
+    ratio: number,
+    sub: number,
+) => {
+    const hf = (TEST_ASPECT_SCALE * viewport.fieldH) / 2
+    const wf = (TEST_ASPECT_SCALE * viewport.fieldW) / 2
+    const [hw, hh] = ratio < wf / hf ? [wf, wf / ratio] : [ratio * hf, hf]
+    const e = TEST_ASPECT_BOX_EDGE
+    const rect = (l: number, r: number, t: number, b: number): Quad => ({
+        bl: vec(l, b),
+        br: vec(r, b),
+        tl: vec(l, t),
+        tr: vec(r, t),
+    })
+    const order = 1000 + 4 * sub
+    draw(sprite, rect(-hw - e, hw + e, hh + e, hh - e), getZAlt(LAYER_OVERLAY, order), 1)
+    draw(sprite, rect(-hw - e, hw + e, -hh + e, -hh - e), getZAlt(LAYER_OVERLAY, order + 1), 1)
+    draw(sprite, rect(-hw - e, -hw + e, hh, -hh), getZAlt(LAYER_OVERLAY, order + 2), 1)
+    draw(sprite, rect(hw - e, hw + e, hh, -hh), getZAlt(LAYER_OVERLAY, order + 3), 1)
+}
+
+// sekai/lib/stage.py draw_test_aspect_overlay.
+export const drawTestAspectOverlay = (viewport: PreviewViewport, draw: Draw, skin: PreviewSkin) => {
+    if (!viewport.testAspect) return
+    drawAspectBox(viewport, draw, skin.guides[1], 21 / 9, 0)
+    drawAspectBox(viewport, draw, skin.guides[3], 4 / 3, 1)
+    drawAspectBox(viewport, draw, skin.guides[2], 16 / 9, 2)
+}
 
 export const drawStaticStage = (context: PreviewFrameContext, draw: Draw, skin: PreviewSkin) => {
     if (skin.sekaiStage) {

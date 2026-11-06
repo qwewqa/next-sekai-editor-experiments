@@ -1002,6 +1002,7 @@
         "overlay": "Üzerinde"
       },
       "aspectRatio": "En Boy Oranı",
+      "testAspect": "En Boy Oranını Test Et",
       "controls": {
         "title": "Önizleme Ayarları Paneli",
         "auto": "Otomatik",
@@ -1138,6 +1139,7 @@
       },
       "previewNoteSpeed": "Önizlemede notaların yaklaşma hızı, 1 ile 12 arasında.",
       "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanların gösterilmesi.",
+      "previewTestAspect": "Önizlemenin yarı boyutta, 21:9, 16:9 ve 4:3 ekranların sınırlarıyla birlikte gösterilmesi.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkların ve parlamaların gösterilmesi.",
       "previewAntialias": "Önizlemede tırtıklı kenarların yumuşatılması ve titremenin azaltılması.",
       "previewTransportPosition": {

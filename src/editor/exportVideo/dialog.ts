@@ -95,6 +95,7 @@ export type DialogInput = {
         noteSpeed: number
         showEffects: boolean
         showCombo: boolean
+        testAspect: boolean
         backdrop: ExportSettings['backdrop']
     }
     bgm: Bgm
@@ -155,6 +156,7 @@ const formFromSettings = (look: DialogInput['look']) => {
         noteSpeed: look.noteSpeed,
         showEffects: look.showEffects,
         showCombo: look.showCombo,
+        testAspect: look.testAspect,
         fadeIn: 0,
         fadeOut: 0,
         bgmVolume: settings.playBgmVolume,
@@ -448,6 +450,7 @@ export const createExportDialog = (input: DialogInput) => {
         noteSpeed: form.noteSpeed,
         showEffects: form.showEffects,
         showCombo: form.showCombo,
+        testAspect: form.testAspect,
         backdrop: input.look.backdrop,
     })
 

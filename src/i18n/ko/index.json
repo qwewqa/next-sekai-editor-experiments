@@ -1002,6 +1002,7 @@
         "overlay": "겹쳐 표시"
       },
       "aspectRatio": "화면 비율",
+      "testAspect": "화면비 테스트",
       "controls": {
         "title": "미리보기 설정 패널",
         "auto": "자동",
@@ -1138,6 +1139,7 @@
       },
       "previewNoteSpeed": "미리보기에서 노트가 다가오는 속도(1~12).",
       "previewShowHitboxes": "노트와 슬라이드의 판정에 쓰이는 영역을 표시할지 여부.",
+      "previewTestAspect": "미리보기를 절반 크기로 줄이고 21:9, 16:9, 4:3 화면의 테두리와 함께 표시할지 여부.",
       "previewShowEffects": "미리보기에서 노트를 칠 때와 슬라이드를 누르고 있는 동안 파티클과 빛 효과를 표시할지 여부.",
       "previewAntialias": "미리보기에서 가장자리의 계단 현상을 부드럽게 처리하고 깜박임을 줄일지 여부.",
       "previewTransportPosition": {

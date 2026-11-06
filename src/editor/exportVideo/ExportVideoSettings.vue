@@ -216,6 +216,11 @@ const formatDescription = computed(() => ({ choices: strings.value.formatDescrip
                 :label="i18n.settings.preview.showCombo"
                 :disabled="busy"
             />
+            <ToggleField
+                v-model="form.testAspect"
+                :label="i18n.settings.preview.testAspect"
+                :disabled="busy"
+            />
             <NumberField
                 v-model="form.fadeIn"
                 :label="strings.fadeIn"

@@ -52,6 +52,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         noteSpeed: 6,
         showEffects: true,
         showCombo: true,
+        testAspect: false,
         backdrop: [0.08, 0.08, 0.1],
         ...options.settings,
     }
@@ -152,6 +153,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
                             showEffects: settings.showEffects,
                             showHitboxes: false,
                             showCombo: settings.showCombo,
+                            testAspect: settings.testAspect,
                             backdrop: settings.backdrop,
                             background: background && {
                                 ...background,

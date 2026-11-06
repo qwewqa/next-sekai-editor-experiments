@@ -63,6 +63,7 @@ export const openExportVideo = async (
                 noteSpeed: settings.previewNoteSpeed,
                 showEffects: settings.previewShowEffects,
                 showCombo: settings.previewShowCombo,
+                testAspect: settings.previewTestAspect,
                 backdrop: readPreviewBackdrop(),
             },
             bgm,

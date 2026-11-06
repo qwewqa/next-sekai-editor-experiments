@@ -1002,6 +1002,7 @@
         "overlay": "重ねて表示"
       },
       "aspectRatio": "アスペクト比",
+      "testAspect": "アスペクト比をテスト",
       "controls": {
         "title": "プレビュー設定パネル",
         "auto": "自動",
@@ -1138,6 +1139,7 @@
       },
       "previewNoteSpeed": "プレビューでノーツが近づく速度（1～12）。",
       "previewShowHitboxes": "ノーツやスライドの判定に使う範囲を表示するかどうか。",
+      "previewTestAspect": "プレビューを半分のサイズに縮小し、21:9、16:9、4:3の画面枠とともに表示するかどうか。",
       "previewShowEffects": "ノーツを叩いたときやスライドを押している間のパーティクルと発光をプレビューに表示するかどうか。",
       "previewAntialias": "プレビューで輪郭のギザギザを滑らかにし、ちらつきを抑えるかどうか。",
       "previewTransportPosition": {

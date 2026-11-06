@@ -116,6 +116,7 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                         showEffects: s.showEffects,
                         showHitboxes: false,
                         showCombo: s.showCombo,
+                        testAspect: s.testAspect,
                         backdrop: s.backdrop,
                         background: background && {
                             ...background,

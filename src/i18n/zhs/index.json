@@ -1002,6 +1002,7 @@
         "overlay": "叠加"
       },
       "aspectRatio": "宽高比",
+      "testAspect": "测试宽高比",
       "controls": {
         "title": "预览设置面板",
         "auto": "自动",
@@ -1138,6 +1139,7 @@
       },
       "previewNoteSpeed": "预览中音符接近的速度，范围为 1 到 12。",
       "previewShowHitboxes": "是否显示用于判定音符和长按音符的区域。",
+      "previewTestAspect": "是否将预览缩小至一半尺寸，并显示 21:9、16:9 和 4:3 屏幕的边框。",
       "previewShowEffects": "音符被击中时以及长按音符被按住期间，是否在预览中显示粒子和发光效果。",
       "previewAntialias": "是否在预览中平滑锯齿边缘并减少闪烁。",
       "previewTransportPosition": {

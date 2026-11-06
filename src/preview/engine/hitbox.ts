@@ -12,8 +12,9 @@ import {
     sameAuthoredBeat,
     usesLocalElevationEase,
 } from './elevation'
-import { getZAlt, type Layer } from './layer'
+import { LAYER_OVERLAY, getZAlt } from './layer'
 import {
+    applyTestAspect,
     approachAtTilt,
     blendStageTransform,
     computeStageTransform,
@@ -63,9 +64,6 @@ import { createTimeIndex, queryTimeIndex, type TimeIndex } from './timeIndex'
 // Connector.draw_hitbox) for an autoplay that judges every note on time.
 
 type Draw = (sprite: Sprite | undefined, quad: Quad, z: ZKey, a: number) => void
-
-// sekai/lib/layer.py layers.overlay
-const LAYER_OVERLAY: Layer = { layer: 24, sublayer: 0 }
 
 // sekai/lib/note.py
 const INSTANT_HITBOX_DRAW_WINDOW = 0.05
@@ -261,6 +259,7 @@ export type HitboxIndex = {
     hitboxes: Map<HitboxNote, Hitbox>
     fieldW: number
     fieldH: number
+    testAspect: boolean
 }
 
 const indexes = new WeakMap<PreviewChart, HitboxIndex>()
@@ -292,6 +291,7 @@ export const getHitboxIndex = (chart: PreviewChart) => {
             hitboxes: new Map(),
             fieldW: NaN,
             fieldH: NaN,
+            testAspect: false,
         }
         indexes.set(chart, index)
     }
@@ -335,9 +335,14 @@ export const createGeometryContext = (
     chart,
     viewport,
     time,
-    layout: layoutTransformAtCamera(
+    layout: applyTestAspect(
         viewport,
-        chart.isDynamicStages ? getCameraInfo(viewport, chart.cameras, time) : defaultCameraInfo(),
+        layoutTransformAtCamera(
+            viewport,
+            chart.isDynamicStages
+                ? getCameraInfo(viewport, chart.cameras, time)
+                : defaultCameraInfo(),
+        ),
     ),
     stages: new Map(),
 })
@@ -736,10 +741,15 @@ export const drawHitboxes = (
     leftLimit: boolean,
 ) => {
     const index = getHitboxIndex(chart)
-    if (index.fieldW !== viewport.fieldW || index.fieldH !== viewport.fieldH) {
+    if (
+        index.fieldW !== viewport.fieldW ||
+        index.fieldH !== viewport.fieldH ||
+        index.testAspect !== viewport.testAspect
+    ) {
         index.hitboxes.clear()
         index.fieldW = viewport.fieldW
         index.fieldH = viewport.fieldH
+        index.testAspect = viewport.testAspect
     }
 
     // Live geometry is sampled at the input time, so share it across the frame.

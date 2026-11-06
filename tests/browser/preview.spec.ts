@@ -237,6 +237,28 @@ test('circular endpoints keep their preview geometry through a small fade', asyn
     }
 })
 
+test('Test Aspect Ratio changes the frame, and turning it off draws the same frame as before', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { fixtures, show, view, settings } = window.editorTest
+        settings.previewShowTime = false
+        show(fixtures.interaction, 3.8)
+        view.cursorTime = 3.8
+    })
+    await settle(page)
+    const viewport = page.locator('.preview-viewport').first()
+    const toggle = page.locator('.preview-controls').getByText('Test Aspect Ratio', { exact: true })
+    const off = await viewport.screenshot()
+    await toggle.click()
+    expect(await page.evaluate(() => window.editorTest.settings.previewTestAspect)).toBe(true)
+    await settle(page)
+    expect((await viewport.screenshot()).equals(off)).toBe(false)
+    await toggle.click()
+    await settle(page)
+    expect((await viewport.screenshot()).equals(off)).toBe(true)
+})
+
 test('unavailable WebGL reports a graphics error and reload can recover', async ({ page }) => {
     // It patches the main thread's WebGL, which a worker's canvas never reaches.
     test.skip(test.info().project.name === 'chromium-worker')
@@ -1989,7 +2011,7 @@ test.describe('preview aspect ratios', () => {
             window.editorTest.settings.topDockHeight = 140
             window.editorTest.settings.previewControls = 'expanded'
         })
-        await page.setViewportSize({ width: 1069, height: 944 })
+        await page.setViewportSize({ width: 1069, height: 988 })
         await settle(page)
         const controls = page.locator('.preview-controls')
         const body = controls.locator('.preview-controls-body')
@@ -2285,6 +2307,7 @@ test('preview options share persisted settings with the main options menu', asyn
         'Show Effects',
         'Show Time',
         'Show Combo',
+        'Test Aspect Ratio',
         'Aspect Ratio',
         'Render Scale',
         'Antialiasing',

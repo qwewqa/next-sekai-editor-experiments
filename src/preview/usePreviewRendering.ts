@@ -360,6 +360,7 @@ export const usePreviewRendering = (
                 // Only redraws: the overlay never changes the compiled chart.
                 showHitboxes: settings.previewShowHitboxes,
                 showCombo: settings.previewShowCombo,
+                testAspect: settings.previewTestAspect,
                 backdrop: backdrop.value,
                 background: loadedBackground.value
                     ? {

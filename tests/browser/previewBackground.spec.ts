@@ -165,6 +165,7 @@ test('additive foreground keeps its alpha when composited over an exposed backgr
             showEffects: true,
             showHitboxes: false,
             showCombo: false,
+            testAspect: false,
             background: { aspectRatio: 1, fit: 'cover', color: '#52779c', sigma: 0 },
         })
         const gl = canvas.getContext('webgl2')!
@@ -226,6 +227,7 @@ test('a background far larger than the frame shows fine lines as their average',
                 showEffects: true,
                 showHitboxes: false,
                 showCombo: false,
+                testAspect: false,
                 background: { aspectRatio: 1, fit: 'cover', color: '#000000', sigma: 0 },
             },
         )

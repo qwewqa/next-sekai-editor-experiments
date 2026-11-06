@@ -176,6 +176,22 @@ for (const start of [2, 7, 83])
         expect(result.maxError).toBe(0)
     })
 
+test('a Test Aspect Ratio frame with camera events equals the main preview draw', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() => {
+        const chart = structuredClone(window.editorTest.fixtures.events)
+        chart.isDynamicStages = true
+        window.editorTest.show(chart)
+        return window.editorTest.exportVideo({
+            parityAt: 0,
+            settings: { in: 7, frames: 3, testAspect: true },
+        })
+    })
+    expect(result.error).toBeUndefined()
+    expect(result.maxError).toBe(0)
+})
+
 test('an intentionally black first frame is encoded', async ({ page }) => {
     const result = await page.evaluate(() =>
         window.editorTest.exportVideo({ parityAt: 0, settings: { frames: 3, fadeIn: 0.1 } }),

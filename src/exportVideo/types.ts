@@ -20,6 +20,7 @@ export type ExportSettings = CodecSettings &
         noteSpeed: number
         showEffects: boolean
         showCombo: boolean
+        testAspect: boolean
         backdrop: NonNullable<PreviewFrameInput['backdrop']>
     }
 export type ExportAssets = {
