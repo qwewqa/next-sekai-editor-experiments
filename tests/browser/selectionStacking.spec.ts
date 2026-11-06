@@ -113,6 +113,27 @@ for (const [locale, { labels, borderline = [] }] of Object.entries(longWords)) {
         await expect
             .poll(async () => (await stacked(page)).filter((label) => !borderline.includes(label)))
             .toEqual(labels)
+        // Beside or below, a borderline label keeps its words whole and its toggle shows both
+        // values in full.
+        for (const label of borderline) {
+            const misfits = await field(page, label).evaluate(async (root) => {
+                const { valueOverflows, wordsOverflow } = await window.editorTest.appImport<
+                    typeof import('../../src/modals/form/fieldLayout')
+                >('/src/modals/form/fieldLayout.ts')
+                const { i18n } =
+                    await window.editorTest.appImport<typeof import('../../src/i18n')>(
+                        '/src/i18n/index.ts',
+                    )
+                const { enabled, disabled } = i18n.value.modals.form.toggle
+                const text = root.querySelector<HTMLElement>('.form-field-text')!
+                const toggle = root.querySelector<HTMLElement>('.form-field-toggle > input')!
+                return {
+                    breaks: wordsOverflow([text])[0],
+                    truncates: valueOverflows(toggle, [enabled, disabled]),
+                }
+            })
+            expect(misfits).toEqual({ breaks: false, truncates: false })
+        }
     })
 }
 
