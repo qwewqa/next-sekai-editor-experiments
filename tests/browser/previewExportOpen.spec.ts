@@ -525,13 +525,15 @@ for (const failure of ['throws', 'hangs'] as const)
         page,
     }) => {
         test.skip(test.info().project.name !== 'chromium-worker', 'The worker host only')
-        // A hung worker is stopped after this long without an answer.
+        // A hung worker is stopped after this long without an answer: longer than a frame takes on
+        // a slow CI runner, which would otherwise hand over before the failure.
         await page.addInitScript(() => {
-            localStorage.setItem('nse.test.previewWorker', JSON.stringify({ timeoutMs: 2000 }))
+            localStorage.setItem('nse.test.previewWorker', JSON.stringify({ timeoutMs: 8000 }))
         })
         await boot(page)
         await openVideoDialog(page)
         await expect.poll(() => bytes(page)).toBe(0)
+        expect(await host(page)).toBe('worker')
         const counted = await counts(page)
         const worker = previewWorker(page)
         await worker.evaluate((failure: string) => {
@@ -547,7 +549,7 @@ for (const failure of ['throws', 'hangs'] as const)
         }, failure)
         // A new cursor time makes the page post a frame.
         await page.evaluate(() => (window.editorTest.view.cursorTime = 0.9))
-        await expect.poll(() => host(page), { timeout: 10_000 }).toBe('main')
+        await expect.poll(() => host(page), { timeout: 30_000 }).toBe('main')
         await settle(page)
         expect(await counts(page)).toEqual(counted)
         await closeDialog(page)
