@@ -21,7 +21,7 @@ import {
 export const productName = product.name
 
 /** Bumped when the set's art changes. */
-export const setVersion = 1
+export const setVersion = 2
 
 /**
  * The original names (tests/fixtures/next-sekai-originals.json) the set leaves out: the stage that
@@ -56,9 +56,13 @@ const strip = (color, alpha) =>
         { color, alpha, qa: alpha / 16, ha: alpha / 4, ta: (alpha * 9) / 16 },
         { stretch: true },
     )
-// A connector band: feathered sides, lighter towards them.
+// A connector band, lighter towards its sides. The sides are hard: one clear texel at each edge of
+// the quad, then the band, so texture filtering antialiases the edge and the quad's own edge has no
+// step to alias without MSAA. At 256 texels across, the edge is about a pixel wide on a connector 2
+// to 3 lanes wide at the judge line, as the base's is.
+const bandWidth = 256
 const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
-    image('band', { color, light, alpha }, { stretch: true })
+    image('band', { color, light, alpha, w: bandWidth, inner: bandWidth - 2 }, { stretch: true })
 // A connector at rest and held, in the base set's colours: [rest, held].
 const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
 // Slot glows in the base set's glow colours: [at the note, middle, top], up to a height of the cell.

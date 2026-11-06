@@ -2,7 +2,7 @@
     "version": 1,
     "set": {
         "name": "nse-builtin",
-        "version": 1
+        "version": 2
     },
     "files": {
         "builtin-assets/out/icon/app-icon-1024.png": {
@@ -46,20 +46,20 @@
             "bytes": 46109
         },
         "public/builtin/background.scp": {
-            "sha256": "6b095a34da66b47fdff498262149d5c742f14ae64aec13533d18c21c5ba3a5a4",
+            "sha256": "372cfda5d2d0314a8df311d73a898571c14c915097be178d24f83ad12fec2970",
             "bytes": 406842
         },
         "public/builtin/effect.scp": {
-            "sha256": "12f0a155665497263e9f449f2f8527add709af646a8b1bcbb0ef6f677b64d95e",
+            "sha256": "b00ef7476fc03b02dababc2f9980d1b885a743eab27b174d989f6071bb9902c7",
             "bytes": 353506
         },
         "public/builtin/particle.scp": {
-            "sha256": "f9ad0139ce8635b358e9508fc48686a7099ec264d10f301bd8d96ebdbbd7219a",
-            "bytes": 123502
+            "sha256": "4ba9106ad7ad0908c8611de7ad4d64f592c0d0c16a98add0f7bb3cadf5b15995",
+            "bytes": 123500
         },
         "public/builtin/skin.scp": {
-            "sha256": "fba06c544eb6ddb6a2caa32774f72ad7a4aa2350162d9ac8dad6bf56004cc130",
-            "bytes": 2012341
+            "sha256": "9eef15b1015cc62a77bf8e3733936aac5ffaf279a8652b5bb9b1d5e6253695da",
+            "bytes": 2013869
         }
     },
     "resources": {
@@ -70,14 +70,14 @@
                 "bytes": 1986
             },
             "data": {
-                "sha1": "2a1c37d42e378dbb8c4064825a38f1b64a761384",
-                "sha256": "374dc6253bb6d452f337c1a8a96c1f7eebf1d01b4165d0128b0cb1ad27162e04",
-                "bytes": 27115
+                "sha1": "eac451851de9d00fd1d2f82a0b293ea10ff1dbc3",
+                "sha256": "d6f035bb7d9900db2477aac920197e1086d744d69c7ef65f278902ea7e5027e1",
+                "bytes": 27149
             },
             "texture": {
-                "sha1": "f9fe555c929bce01a184af8914f621a85468e516",
-                "sha256": "7a98e5f07fc3a905216cf117120dfdd84de85a713cdba919e35b5b7152b4029b",
-                "bytes": 1981227
+                "sha1": "3afabd30f5ddc2beedbc3b9474fc0c463db5abdc",
+                "sha256": "d717bbc5ae536120fb4876f5b3d1a2d1658bc69e6ee21dfea6bd0b93e3b4cfd6",
+                "bytes": 1982730
             }
         },
         "particle": {

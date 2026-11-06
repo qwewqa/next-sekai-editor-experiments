@@ -31,7 +31,7 @@ const translucent = [
     { pattern: /^Sekai Judgment Background/, floor: 0.5 },
     // The base's fallback judge line has opaque lines round a dark middle at 0.6.
     { pattern: /^#JUDGMENT_LINE$/, floor: 1, opaque: 0.25 },
-    // The base's slide, damage and standard connections are at 0.8 with feathered sides.
+    // The base's slide, damage and standard connections are at 0.8.
     { pattern: /Slide Connection|^#NOTE_CONNECTION_/, floor: 0.78 },
     // The base's slot glows run from 0.98 at the note to clear.
     { pattern: /Slot Glow/, floor: 0.9 },
