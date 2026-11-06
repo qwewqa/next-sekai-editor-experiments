@@ -384,6 +384,16 @@ test.describe('preview transport', () => {
     test.use({ hasTouch: true })
 
     const cursor = (page: Page) => page.evaluate(() => window.editorTest.view.cursorTime)
+    // Playback follows the native audio clock, and Play stops if that clock has not moved by its
+    // start deadline, a timer on the simulated clock. Drives frames until the cursor passes
+    // `from`, so a later skip ahead cannot reach the deadline first.
+    const waitForPlayback = (page: Page, from: number) =>
+        expect
+            .poll(async () => {
+                await page.clock.runFor(32)
+                return cursor(page)
+            })
+            .toBeGreaterThan(from)
     const wheel = (
         page: Page,
         init: Pick<WheelEventInit, 'deltaX' | 'deltaY' | 'deltaMode' | 'ctrlKey'>,
@@ -791,7 +801,9 @@ test.describe('preview transport', () => {
         page,
     }) => {
         await installAudio(page)
+        const start = await cursor(page)
         await page.getByRole('button', { name: 'Play Preview', exact: true }).click()
+        await waitForPlayback(page, start)
         await page
             .getByRole('button', { name: 'Hide Playback Controls', exact: true })
             .click({ position: { x: 12, y: 12 } })
@@ -799,6 +811,8 @@ test.describe('preview transport', () => {
         await expect(
             page.getByRole('button', { name: 'Show Playback Controls', exact: true }),
         ).toBeVisible()
+        const toggle = page.locator('.transport-play')
+        await expect(toggle).toHaveAttribute('aria-label', 'Pause Preview')
         const before = await cursor(page)
         for (let i = 0; i < 3; i++) {
             await wheel(page, { deltaY: 100 })
@@ -806,6 +820,7 @@ test.describe('preview transport', () => {
         }
         const stopped = await cursor(page)
         expect(stopped).toBeCloseTo(before - 0.3, 10)
+        await expect(toggle).toHaveAttribute('aria-label', 'Play Preview')
         await page.clock.runFor(500)
         expect(await cursor(page)).toBe(stopped)
         expect(await auditions(page)).toEqual([])
@@ -1031,28 +1046,14 @@ test.describe('preview transport', () => {
             window.editorTest.settings.playStartPosition = 'view'
         })
         await page.getByRole('button', { name: 'Play Preview', exact: true }).click()
-        // The UI uses a simulated animation clock; playback follows native audio
-        // time. Drive frames while waiting for real playback to advance.
-        await expect
-            .poll(async () => {
-                await page.clock.runFor(32)
-                return cursor(page)
-            })
-            .toBeGreaterThan(3.3)
+        await waitForPlayback(page, 3.3)
         await page.getByRole('button', { name: 'Pause Preview', exact: true }).click()
         const paused = await cursor(page)
         await page.clock.runFor(500)
         expect(await cursor(page)).toBe(paused)
 
         await page.getByRole('button', { name: 'Play Preview', exact: true }).click()
-        // Play stops if the audio clock has not moved by its start deadline, a timer on the
-        // simulated clock. Let the audio start before skipping past it.
-        await expect
-            .poll(async () => {
-                await page.clock.runFor(32)
-                return cursor(page)
-            })
-            .toBeGreaterThan(paused)
+        await waitForPlayback(page, paused)
         // These waits check elapsed-time visibility, not intermediate animation
         // frames. Skip frame-by-frame GPU work so slower CI runners stay bounded.
         await page.clock.fastForward(3500)
@@ -1202,8 +1203,10 @@ test.describe('preview transport', () => {
         await wheel(page, { deltaY: 100 }, '.preview-transport-root')
         expect(await cursor(page)).toBe(before - 0.1)
         await play.click()
+        await waitForPlayback(page, before - 0.1)
         await page.clock.fastForward(10000)
         await expect(panel).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Pause Preview', exact: true })).toBeVisible()
 
         // Too short for the image and strip, Auto moves the strip over the image,
         // which keeps its full size; the strip stays in view.
