@@ -176,7 +176,7 @@ const settingsProperties = {
     }),
     previewHighlightSelection: Type.Boolean({ default: true }),
     previewShowHitboxes: Type.Boolean(),
-    previewAntialias: Type.Boolean({ default: true }),
+    previewAntialias: Type.Boolean(),
     // Draw the preview in its worker where the browser can (docs/rendering.md).
     previewInWorker: Type.Boolean({ default: true }),
     // The skin, particle, background and sound effects this device previews with.

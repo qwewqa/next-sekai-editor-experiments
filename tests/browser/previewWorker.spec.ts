@@ -367,7 +367,7 @@ test("a replaced canvas's context, and a stopped worker, go only after the page 
     // A new canvas while frames are held. The old one keeps its context until two frames pass.
     await page.evaluate(() => {
         window.hostTest.holdFrames!()
-        window.editorTest.settings.previewAntialias = false
+        window.editorTest.settings.previewAntialias = true
     })
     await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(4)
     expect(await page.evaluate(() => window.previewTest.releases ?? 0)).toBe(0)

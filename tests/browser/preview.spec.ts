@@ -285,6 +285,7 @@ test('preview falls back when antialiasing prevents graphics initialization', as
     test.skip(test.info().project.name === 'chromium-worker')
     await page.evaluate(async () => {
         window.editorTest.settings.showPreview = false
+        window.editorTest.settings.previewAntialias = true
         await window.editorTest.nextTick()
         const original = HTMLCanvasElement.prototype.getContext
         window.previewTest.contextRequests = []
@@ -1377,8 +1378,8 @@ test('expanded preview settings leave docked playback buttons and the clock reac
 
     // The settings body scrolls instead of making its lower controls unreachable.
     const antialias = page.getByRole('switch', { name: 'Antialiasing', exact: true })
-    await antialias.uncheck()
-    await expect(antialias).not.toBeChecked()
+    await antialias.check()
+    await expect(antialias).toBeChecked()
     await expect(page.locator('.preview-transport')).toBeVisible()
 })
 
@@ -1426,8 +1427,8 @@ for (const side of ['left', 'right'] as const) {
         expect(geometry.transportReachable.length).toBeGreaterThanOrEqual(4)
         expect(geometry.transportReachable.every(Boolean)).toBe(true)
         const antialias = page.getByRole('switch', { name: 'Antialiasing', exact: true })
-        await antialias.uncheck()
-        await expect(antialias).not.toBeChecked()
+        await antialias.check()
+        await expect(antialias).toBeChecked()
         // A pointer change returns focus, so editor shortcuts keep working.
         await expect(page.locator('.preview-controls :focus')).toHaveCount(0)
 
@@ -1480,7 +1481,7 @@ test('preview restores lost contexts and reuses decoded atlases for every new co
         .toBeGreaterThan(initialFrames)
     expect(await page.evaluate(() => window.previewTest.bitmaps)).toBe(2)
 
-    await page.getByRole('switch', { name: 'Antialiasing', exact: true }).uncheck()
+    await page.getByRole('switch', { name: 'Antialiasing', exact: true }).check()
     await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(6)
 
     // Closing keeps the decoded atlases for the next preview; reopening only
@@ -1936,16 +1937,19 @@ test.describe('preview aspect ratios', () => {
         await quality.focus()
         await quality.press('ArrowUp')
         await expect(quality).toHaveValue('1.25')
-        for (const name of ['Show Effects', 'Antialiasing']) {
+        for (const [name, on] of [
+            ['Show Effects', true],
+            ['Antialiasing', false],
+        ] as const) {
             const checkbox = controls.getByLabel(name, { exact: true })
             await checkbox.focus()
             await checkbox.press('Space')
-            await expect(checkbox).not.toBeChecked()
+            await expect(checkbox).toBeChecked({ checked: !on })
             await expect(checkbox).toBeFocused()
             // Send the next key to actual focus rather than re-focusing through
             // Locator.press: blurring a checkbox used to start editor playback.
             await page.keyboard.press('Space')
-            await expect(checkbox).toBeChecked()
+            await expect(checkbox).toBeChecked({ checked: on })
             await expect(checkbox).toBeFocused()
             await expect(controls).toBeVisible()
         }
@@ -2018,8 +2022,8 @@ test.describe('preview aspect ratios', () => {
         await expect
             .poll(() => body.evaluate((element) => element.scrollHeight - element.clientHeight))
             .toBe(0)
-        await antialias.uncheck()
-        await expect(antialias).not.toBeChecked()
+        await antialias.check()
+        await expect(antialias).toBeChecked()
 
         await page.getByRole('button', { name: 'Minimize Preview Settings', exact: true }).click()
         await page.getByRole('button', { name: 'Show Preview Settings', exact: true }).click()
@@ -2044,8 +2048,8 @@ test.describe('preview aspect ratios', () => {
         ).toBeInViewport()
         await antialias.scrollIntoViewIfNeeded()
         await expect(antialias).toBeInViewport()
-        await antialias.check()
-        await expect(antialias).toBeChecked()
+        await antialias.uncheck()
+        await expect(antialias).not.toBeChecked()
         const speed = controls.getByRole('spinbutton', { name: 'Note Speed', exact: true })
         await speed.scrollIntoViewIfNeeded()
         await expect(speed).toBeInViewport()
@@ -2100,6 +2104,7 @@ test.describe('preview aspect ratios', () => {
         await page.evaluate(() => {
             window.editorTest.settings.previewPosition = 'top'
             window.editorTest.settings.previewControls = 'expanded'
+            window.editorTest.settings.previewAntialias = true
         })
         for (const width of [390, 250]) {
             await page.setViewportSize({ width, height: 700 })
@@ -2307,7 +2312,7 @@ test('preview options share persisted settings with the main options menu', asyn
     await scale.press('Enter')
     await preview.getByRole('radio', { name: '4:3', exact: true }).check()
     await preview.getByLabel('Show Effects', { exact: true }).uncheck()
-    await preview.getByLabel('Antialiasing', { exact: true }).uncheck()
+    await preview.getByLabel('Antialiasing', { exact: true }).check()
     await preview
         .getByRole('combobox', { name: 'Playback Controls', exact: true })
         .selectOption('overlay')
@@ -2340,7 +2345,7 @@ test('preview options share persisted settings with the main options menu', asyn
         'Disabled',
     )
     await expect(dialog.getByRole('switch', { name: 'Antialiasing', exact: true })).toHaveValue(
-        'Disabled',
+        'Enabled',
     )
     await dialog.getByLabel('Note Speed', { exact: true }).fill('8.5')
     await dialog.getByLabel('Note Speed', { exact: true }).press('Tab')
@@ -2363,7 +2368,7 @@ test('preview options share persisted settings with the main options menu', asyn
     await expect(scale).toHaveValue('0.75')
     await expect(preview.getByRole('radio', { name: '21:9', exact: true })).toBeChecked()
     await expect(preview.getByLabel('Show Effects', { exact: true })).toBeChecked()
-    await expect(preview.getByLabel('Antialiasing', { exact: true })).toBeChecked()
+    await expect(preview.getByLabel('Antialiasing', { exact: true })).not.toBeChecked()
     await expect(
         preview.getByRole('combobox', { name: 'Playback Controls', exact: true }),
     ).toHaveValue('below')
@@ -2376,7 +2381,7 @@ test('preview options share persisted settings with the main options menu', asyn
     await expect(scale).toHaveValue('0.75')
     await expect(preview.getByRole('radio', { name: '21:9', exact: true })).toBeChecked()
     await expect(preview.getByLabel('Show Effects', { exact: true })).toBeChecked()
-    await expect(preview.getByLabel('Antialiasing', { exact: true })).toBeChecked()
+    await expect(preview.getByLabel('Antialiasing', { exact: true })).not.toBeChecked()
     await expect(
         preview.getByRole('combobox', { name: 'Playback Controls', exact: true }),
     ).toHaveValue('below')
@@ -2564,8 +2569,8 @@ test.describe('preview panel lifecycle', () => {
             expect(geometry.transportReachable.every(Boolean)).toBe(true)
             expect(overlapArea(geometry.settings, geometry.bar!)).toBe(0)
             const antialias = page.getByRole('switch', { name: 'Antialiasing', exact: true })
-            await antialias.uncheck()
-            await expect(antialias).not.toBeChecked()
+            await antialias.check()
+            await expect(antialias).toBeChecked()
         })
     })
 
@@ -2597,8 +2602,8 @@ test.describe('preview panel lifecycle', () => {
         expect(geometry.transportReachable.every(Boolean)).toBe(true)
         const antialias = page.getByRole('switch', { name: 'Antialiasing', exact: true })
         await antialias.scrollIntoViewIfNeeded()
-        await antialias.uncheck()
-        await expect(antialias).not.toBeChecked()
+        await antialias.check()
+        await expect(antialias).toBeChecked()
     })
 
     test('rotating between docks remounts the preview cleanly without decoding again', async ({
@@ -3015,8 +3020,8 @@ test.describe('preview panel lifecycle', () => {
         expect(geometry.headerReachable).toBe(true)
         const antialias = page.getByRole('switch', { name: 'Antialiasing', exact: true })
         await antialias.scrollIntoViewIfNeeded()
-        await antialias.uncheck()
-        await expect(antialias).not.toBeChecked()
+        await antialias.check()
+        await expect(antialias).toBeChecked()
     })
 
     test('a reopened preview appears in place without a jumping toggle or empty first frame', async ({

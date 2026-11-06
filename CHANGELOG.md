@@ -8,6 +8,7 @@
 - When objects of several kinds are selected, the Properties panel now shows General first. Beat now also appears for notes and events selected together with BPM changes or time scales. Notes and stage transform events now have separate Elevation fields, both when selected together and in Brush Properties.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
+- Antialiasing is now off by default in the preview. To turn it on, use Preview Settings or Settings › Preview.
 - With Antialiasing on, small and distant notes and effects in the preview shimmer less.
 - (Web) The editor now requires Chrome or Edge 111 or later, Firefox 128 or later, or Safari 17 or later. On iPhone and iPad, it requires iOS 17 or later.
 - (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.
