@@ -97,18 +97,22 @@ test('a stacked choice stays a select instead of switching back and forth', asyn
     await expect(presentation.locator('[role="radiogroup"]')).toBeVisible()
 })
 
-// Only labels whose longest word or phrase does not fit beside the value stack.
-const longWords: Record<string, string[]> = {
-    en: [],
-    fr: [],
-    tr: ['Vuruş Çizgisinden Geçen'],
+// Only labels whose longest word or phrase does not fit beside the value stack. A value that
+// fills its pill within a pixel at this width may stack too: it does where text is drawn a
+// fraction wider, as on Linux.
+const longWords: Record<string, { labels: string[]; borderline?: string[] }> = {
+    en: { labels: [] },
+    fr: { labels: [], borderline: ['Traverser la ligne de jugement'] },
+    tr: { labels: ['Vuruş Çizgisinden Geçen'] },
 }
-for (const [locale, labels] of Object.entries(longWords)) {
+for (const [locale, { labels, borderline = [] }] of Object.entries(longWords)) {
     test(`${locale} values at a 336 dock, below the default, go below only labels with a word too long`, async ({
         page,
     }) => {
         await open(page, locale, 336)
-        await expect.poll(() => stacked(page)).toEqual(labels)
+        await expect
+            .poll(async () => (await stacked(page)).filter((label) => !borderline.includes(label)))
+            .toEqual(labels)
     })
 }
 
