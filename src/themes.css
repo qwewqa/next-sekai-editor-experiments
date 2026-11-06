@@ -56,7 +56,10 @@
 }
 
 :root {
-    color-scheme: light;
+    /* `only` keeps a browser from darkening the theme itself, as Chrome on Android can while
+       the system is dark (battery saver turns it dark on some phones). It would darken the
+       controls but not the chart or the preview. */
+    color-scheme: only light;
     --track-shadow: inset 0 1px 2px rgb(48 51 77 / 0.2);
     /* A pressed raised control sinks into its surface. */
     --pressed-shadow: inset 0 1px 3px rgb(48 51 77 / 0.35);
@@ -75,7 +78,7 @@
 /* Surfaces step up from the chart as in light: dark chrome, panels, then bands and popups, then
    controls. Shadows barely show, so popups, docks and swatches get light edges instead. */
 :root[data-theme='dark'] {
-    color-scheme: dark;
+    color-scheme: only dark;
     --color-fg: rgb(222 222 238);
     --color-fg-strong: rgb(240 240 250);
     --color-bg: rgb(35 37 57);
