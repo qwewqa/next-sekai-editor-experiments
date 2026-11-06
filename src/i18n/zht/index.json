@@ -1090,7 +1090,7 @@
       "previewInWorker": "是否與編輯器的其他部分平行繪製預覽。如果預覽顯示異常或沒有顯示，請關閉此項。",
       "toolbarQuickSwitch": "是否可以按住工具列按鈕，再在要選擇的工具上放開。",
       "playFollowPosition": "「跟隨」將播放游標保持的位置。可見譜面的底部為 0，頂部為 100。",
-      "playPreviewDuration": "移動播放游標或選取物件時 BGM 的播放時長。",
+      "playPreviewDuration": "在譜面中選取時間點或選取物件時 BGM 的播放時長。",
       "mouseSecondaryTool": {
         "intro": "以右鍵按一下和按住右鍵拖曳的操作。",
         "choices": {

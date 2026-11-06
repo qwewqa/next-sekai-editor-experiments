@@ -6,7 +6,6 @@ import {
     getPlayerDisplayTime,
     getPlayerTime,
     previewPlayer,
-    stopPreviewPlayer,
 } from '../player'
 import { settings } from '../settings'
 import { clockNow, keepClockWhile, time } from '../time'
@@ -30,9 +29,6 @@ const transport = createTransport({
         getDisplayTime: () => getPlayerDisplayTime(),
         audition: (time) => {
             previewPlayer(time)
-        },
-        stopAudition: () => {
-            stopPreviewPlayer()
         },
     },
     view,
@@ -75,7 +71,6 @@ watch(time, transport.update)
 watch(auditionVersion, transport.flushAudition)
 // Record intent synchronously, then coalesce audio at the normal Vue flush.
 // Transport actions can cancel queued work without comparing ref identities.
-watch(() => view.cursorTime, transport.cursorChanged, { flush: 'sync' })
 watch(
     audioPreviewRequest,
     (request) => {

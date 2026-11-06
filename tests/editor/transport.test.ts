@@ -22,7 +22,6 @@ const fixture = (t: TestContext) => {
     const failures: (() => void)[] = []
     const auditions: number[] = []
     let stopped = 0
-    let auditionsStopped = 0
     let active = 0
     const notifications: (string | number)[] = []
     const flushVersion = ref(0)
@@ -40,7 +39,6 @@ const fixture = (t: TestContext) => {
             getTime: () => clock.audio,
             getDisplayTime: () => clock.display ?? clock.audio,
             audition: (time) => auditions.push(time),
-            stopAudition: () => auditionsStopped++,
         },
         view,
         settings,
@@ -57,7 +55,6 @@ const fixture = (t: TestContext) => {
     })
     const scope = effectScope()
     scope.run(() => {
-        watch(() => view.cursorTime, transport.cursorChanged, { flush: 'sync' })
         watch(flushVersion, transport.flushAudition)
     })
     t.after(() => scope.stop())
@@ -70,25 +67,51 @@ const fixture = (t: TestContext) => {
         failures,
         auditions,
         notifications,
-        counts: () => ({ stopped, auditionsStopped, active }),
+        counts: () => ({ stopped, active }),
     }
 }
 
-test('note auditions preserve the cursor and take precedence over implicit cursor changes', async (t) => {
+test('a requested clip plays its own time at the next flush, also time 0, and leaves the cursor', async (t) => {
     const { transport, view, auditions } = fixture(t)
     transport.audition(12)
-    assert.equal(view.cursorTime, 3)
-    view.cursorTime = 5
     transport.audition(13)
+    assert.deepEqual(auditions, [])
     await nextTick()
     assert.deepEqual(auditions, [13])
-    assert.equal(view.cursorTime, 5)
-    view.cursorTime = 6
+    transport.audition(0)
     await nextTick()
-    assert.deepEqual(auditions, [13, 6])
+    assert.deepEqual(auditions, [13, 0])
+    assert.equal(view.cursorTime, 3)
 })
 
-test('steps override queued notes and later note auditions override steps', async (t) => {
+test('moving the cursor through time plays no clip: writes, steps, scrubs and Stop', async (t) => {
+    const { transport, view, clock, auditions } = fixture(t)
+    view.cursorTime = 5
+    await nextTick()
+    transport.step(10)
+    await nextTick()
+    assert.equal(view.cursorTime, 5.01)
+    // Clamped at 0, without a cursor change.
+    view.cursorTime = 0
+    transport.step(-1)
+    transport.step(-100)
+    await nextTick()
+    assert.equal(view.cursorTime, 0)
+    transport.beginScrub()
+    transport.scrubTo(4)
+    transport.endScrub()
+    await nextTick()
+    assert.equal(view.cursorTime, 4)
+    transport.play(view.cursorTime)
+    clock.audio = 6
+    transport.update()
+    transport.stop(true)
+    await nextTick()
+    assert.equal(view.cursorTime, 4)
+    assert.deepEqual(auditions, [])
+})
+
+test('steps drop a queued clip and later requests play', async (t) => {
     const { transport, view, auditions } = fixture(t)
     view.cursorTime = 3.123456
     transport.audition(12)
@@ -96,38 +119,21 @@ test('steps override queued notes and later note auditions override steps', asyn
     transport.step(10)
     await nextTick()
     assert.equal(view.cursorTime, 3.123456 + 0.001 + 0.01)
-    assert.deepEqual(auditions, [view.cursorTime])
+    assert.deepEqual(auditions, [])
     transport.step(100)
     transport.audition(14)
     await nextTick()
-    assert.deepEqual(auditions, [3.123456 + 0.001 + 0.01, 14])
+    assert.deepEqual(auditions, [14])
 })
 
-test('clamped steps replace old audio and cancel pending notes or cursor changes', async (t) => {
-    const { transport, view, auditions } = fixture(t)
-    transport.audition(8)
-    await nextTick()
-    transport.audition(12)
-    view.cursorTime = 0
-    transport.step(-100)
-    await nextTick()
-    assert.equal(view.cursorTime, 0)
-    assert.deepEqual(auditions, [8, 0])
-})
-
-test('stopping a paused transport cancels pending note and cursor auditions before they flush', async (t) => {
-    const { transport, view, auditions } = fixture(t)
+test('stopping a paused transport cancels a queued clip before it flushes', async (t) => {
+    const { transport, auditions } = fixture(t)
     transport.audition(12)
     transport.stop()
     await nextTick()
     assert.deepEqual(auditions, [])
 
-    view.cursorTime = 5
-    transport.stop()
-    await nextTick()
-    assert.deepEqual(auditions, [])
-
-    // New interactions after the stop retain their normal audition behavior.
+    // New requests after the stop still play.
     transport.audition(14)
     await nextTick()
     assert.deepEqual(auditions, [14])
@@ -179,7 +185,7 @@ test('stepping during playback preserves the displayed position while speed chan
     assert.equal(transport.isPlaying, false)
     assert.equal(counts().stopped, 1)
     assert.equal(view.cursorTime, 3.01)
-    assert.deepEqual(auditions, [3.01])
+    assert.deepEqual(auditions, [])
 })
 
 // The app clock runs while this is true, so it must change as playback starts and ends.
@@ -233,14 +239,16 @@ test('stop returns to the original play position after speed changes', async (t)
     assert.deepEqual(notifications, ['play', 1.5, 'stop'])
 })
 
-test('scrubbing cancels pending audio and auditions exactly once at release', async (t) => {
-    const { transport, view, auditions, counts } = fixture(t)
-    transport.step(10)
+test('a scrub stops playback, drops queued and new clips through its end, and later requests play', async (t) => {
+    const { transport, view, auditions } = fixture(t)
+    transport.play(3)
     transport.beginScrub()
-    transport.scrubTo(4)
-    await nextTick()
-    assert.deepEqual(auditions, [])
-    assert.equal(counts().auditionsStopped, 1)
+    assert.equal(transport.isPlaying, false)
+    transport.endScrub()
+    transport.audition(12)
+    transport.beginScrub()
+    transport.scrubTo(-1)
+    assert.equal(view.cursorTime, 0)
     transport.audition(18)
     transport.scrubTo(4.250456)
     transport.endScrub()
@@ -248,26 +256,13 @@ test('scrubbing cancels pending audio and auditions exactly once at release', as
     transport.scrubTo(20)
     await nextTick()
     assert.equal(view.cursorTime, 4.250456)
-    assert.deepEqual(auditions, [4.250456])
-})
-
-test('cancelled scrub releases no audio and later note interactions still audition', async (t) => {
-    const { transport, view, auditions } = fixture(t)
-    transport.play(3)
-    transport.beginScrub()
-    transport.scrubTo(-1)
-    transport.audition(18)
-    transport.endScrub(false)
-    await nextTick()
-    assert.equal(view.cursorTime, 0)
-    assert.equal(transport.isPlaying, false)
     assert.deepEqual(auditions, [])
     transport.audition(9)
     await nextTick()
     assert.deepEqual(auditions, [9])
 })
 
-test('play and exact steps take over a scrub without a release audition', async (t) => {
+test('play and exact steps take over a scrub', async (t) => {
     const { transport, view, auditions, starts } = fixture(t)
     transport.beginScrub()
     transport.scrubTo(4.123456)
@@ -280,7 +275,7 @@ test('play and exact steps take over a scrub without a release audition', async 
     transport.endScrub()
     await nextTick()
     assert.equal(view.cursorTime, 5.123456 - 0.001)
-    assert.deepEqual(auditions, [view.cursorTime])
+    assert.deepEqual(auditions, [])
 })
 
 test('smooth follow retargets using the clock and cancels only its own scroll', (t) => {
@@ -309,8 +304,8 @@ test('smooth follow retargets using the clock and cancels only its own scroll', 
     assert.equal(view.scrollingY, editorScroll)
 })
 
-test('locked scrub follows immediately and invalid input preserves state', async (t) => {
-    const { transport, view, settings, auditions } = fixture(t)
+test('locked scrub follows immediately and invalid input preserves state', (t) => {
+    const { transport, view, settings } = fixture(t)
     settings.playFollow = true
     transport.beginScrub('locked')
     assert.equal(view.time, 4.5)
@@ -320,9 +315,7 @@ test('locked scrub follows immediately and invalid input preserves state', async
     transport.scrubTo(NaN)
     transport.step(Infinity)
     transport.endScrub()
-    await nextTick()
     assert.equal(view.cursorTime, 5)
-    assert.deepEqual(auditions, [5])
 })
 
 test('a speed change never moves the drawn position back', async (t) => {

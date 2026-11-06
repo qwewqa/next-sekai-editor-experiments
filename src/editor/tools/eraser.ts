@@ -20,7 +20,7 @@ import { formatCount } from '../../utils/size'
 import { clearNotification, notify } from '../notification'
 import {
     focusEntityAtBeat,
-    focusViewAtBeat,
+    placeCursorAtBeat,
     setViewHover,
     view,
     xToLane,
@@ -83,7 +83,7 @@ export const eraser: Tool = {
                 creating: [],
             }
 
-            focusViewAtBeat(yToValidBeat(y))
+            placeCursorAtBeat(yToValidBeat(y))
             if (selectedLength) notify(() => i18n.value.tools.eraser.deselected)
         }
     },

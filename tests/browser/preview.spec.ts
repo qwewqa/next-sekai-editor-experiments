@@ -787,7 +787,7 @@ test.describe('preview transport', () => {
         expect(await cursor(page)).toBe(0)
     })
 
-    test('wheel pauses hidden-panel playback and auditions once after the gesture settles', async ({
+    test('wheel pauses hidden-panel playback and plays no clip when the gesture settles', async ({
         page,
     }) => {
         await installAudio(page)
@@ -803,68 +803,48 @@ test.describe('preview transport', () => {
         for (let i = 0; i < 3; i++) {
             await wheel(page, { deltaY: 100 })
             await page.clock.runFor(60)
-            expect(await auditions(page)).toEqual([])
         }
-        expect(await cursor(page)).toBeCloseTo(before - 0.3, 10)
-        await page.clock.runFor(59)
-        expect(await auditions(page)).toEqual([])
-        await page.clock.runFor(1)
         const stopped = await cursor(page)
-        expect(await auditions(page)).toEqual([stopped])
+        expect(stopped).toBeCloseTo(before - 0.3, 10)
         await page.clock.runFor(500)
         expect(await cursor(page)).toBe(stopped)
+        expect(await auditions(page)).toEqual([])
         await page.getByRole('button', { name: 'Show Playback Controls', exact: true }).click()
         await expect(page.getByRole('button', { name: 'Play Preview', exact: true })).toBeVisible()
     })
 
-    test('an editor note click supersedes pending wheel audio', async ({ page }) => {
+    test('a chart click right after a wheel seek still plays its clip', async ({ page }) => {
         await installAudio(page)
         await wheel(page, { deltaY: 100 })
         const before = await cursor(page)
         const note = await page.evaluate(() => window.editorTest.point(-3, 3))
         await page.mouse.click(note.x, note.y)
         expect(await auditions(page)).toEqual([1.5])
-        await page.clock.runFor(500)
-        expect(await auditions(page)).toEqual([1.5])
         expect(await cursor(page)).toBe(before)
+        await wheel(page, { deltaY: 100 })
+        const empty = await page.evaluate(() => window.editorTest.point(0, 4))
+        await page.mouse.click(empty.x, empty.y)
+        expect(await cursor(page)).toBe(2)
+        await page.clock.runFor(500)
+        expect(await auditions(page)).toEqual([1.5, 2])
+        expect(await cursor(page)).toBe(2)
     })
 
-    for (const reason of ['hide', 'blur', 'unmount'] as const) {
-        test(`${reason} cancels wheel audio without a deferred audition`, async ({ page }) => {
-            await installAudio(page)
-            await wheel(page, { deltaY: 100 })
-            const stopped = await cursor(page)
-            if (reason === 'hide') {
-                await page
-                    .getByRole('button', { name: 'Hide Playback Controls', exact: true })
-                    .click({ position: { x: 12, y: 12 } })
-            } else if (reason === 'blur') {
-                await page.evaluate(() => {
-                    Object.defineProperty(document, 'hasFocus', {
-                        configurable: true,
-                        value: () => false,
-                    })
-                    window.dispatchEvent(new Event('blur'))
-                })
-                expect(await wheel(page, { deltaY: 100 })).toEqual({
-                    prevented: false,
-                    bubbled: true,
-                })
-            } else {
-                await page.evaluate(() => (window.editorTest.settings.showPreview = false))
-            }
-            await page.clock.runFor(500)
-            if (reason === 'blur') {
-                await page.evaluate(() => {
-                    Reflect.deleteProperty(document, 'hasFocus')
-                    window.dispatchEvent(new Event('focus'))
-                })
-                await page.clock.runFor(500)
-            }
-            expect(await auditions(page)).toEqual([])
-            expect(await cursor(page)).toBe(stopped)
+    test('the wheel does not seek while the app is inactive', async ({ page }) => {
+        await wheel(page, { deltaY: 100 })
+        const stopped = await cursor(page)
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hasFocus', { configurable: true, value: () => false })
+            window.dispatchEvent(new Event('blur'))
         })
-    }
+        expect(await wheel(page, { deltaY: 100 })).toEqual({ prevented: false, bubbled: true })
+        await page.clock.runFor(500)
+        expect(await cursor(page)).toBe(stopped)
+        await page.evaluate(() => {
+            Reflect.deleteProperty(document, 'hasFocus')
+            window.dispatchEvent(new Event('focus'))
+        })
+    })
 
     test('all hold rates use elapsed time in both directions and stop on pointer release', async ({
         page,

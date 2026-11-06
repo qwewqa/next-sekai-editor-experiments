@@ -151,7 +151,7 @@ for (const tool of ['select', 'note', 'slide'] as const) {
     })
 }
 
-test('empty-space clicks seek while note creation auditions once without moving the preview', async ({
+test('each empty-space click seeks and auditions, note creation auditions without seeking, and Jump to Start is silent', async ({
     page,
 }) => {
     await click(page, -7, 8)
@@ -159,17 +159,44 @@ test('empty-space clicks seek while note creation auditions once without moving 
         cursor: 4,
         starts: [{ offset: 4.25, duration: 0.12 }],
     })
+    await click(page, -7, 8)
+    expect(await snapshot(page)).toEqual({
+        cursor: 4,
+        starts: [4.25, 4.25].map((offset) => ({ offset, duration: 0.12 })),
+    })
     await page.keyboard.press('a')
     await click(page, -7, 10)
     expect(await snapshot(page)).toEqual({
         cursor: 4,
-        starts: [4.25, 5.25].map((offset) => ({ offset, duration: 0.12 })),
+        starts: [4.25, 4.25, 5.25].map((offset) => ({ offset, duration: 0.12 })),
     })
     expect(await page.evaluate(() => window.editorTest.snapshot().notes)).toContainEqual({
         type: 'note',
         beat: 10,
         left: -7,
         size: 2,
+    })
+    await page.keyboard.press('Home')
+    await settle(page)
+    expect(await snapshot(page)).toEqual({
+        cursor: 0,
+        starts: [4.25, 4.25, 5.25].map((offset) => ({ offset, duration: 0.12 })),
+    })
+})
+
+test.describe('on touch', () => {
+    test.use({ hasTouch: true })
+
+    test('each empty-space tap seeks and auditions', async ({ page }) => {
+        const p = await point(page, 0, 8)
+        for (let tap = 0; tap < 2; tap++) {
+            await page.touchscreen.tap(p.x, p.y)
+            await settle(page)
+        }
+        expect(await snapshot(page)).toEqual({
+            cursor: 4,
+            starts: [4.25, 4.25].map((offset) => ({ offset, duration: 0.12 })),
+        })
     })
 })
 

@@ -1090,7 +1090,7 @@
       "previewInWorker": "Önizlemenin editörün geri kalanıyla paralel olarak çizilmesi. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
       "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçebilmeniz.",
       "playFollowPosition": "Takip Et’in oynatma imlecini tuttuğu yükseklik. Çizelgenin görünen kısmının altı 0, üstü 100’dür.",
-      "playPreviewDuration": "Oynatma imlecini taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin çalma süresi.",
+      "playPreviewDuration": "Çizelgede bir zaman noktası seçtiğinizde veya bir nesne seçtiğinizde arka plan müziğinin çalma süresi.",
       "mouseSecondaryTool": {
         "intro": "Sağ tıklamanın ve sağ tuşla sürüklemenin işlevi.",
         "choices": {

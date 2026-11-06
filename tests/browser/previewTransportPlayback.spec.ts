@@ -160,69 +160,14 @@ test('all fine-step deltas preserve sub-millisecond position and chart selection
         expect(sample.currentViewport).toBe(sample.viewport)
         expect(sample.scrolling).toBeUndefined()
         expect(sample.sameState).toBe(true)
-        expect(sample.starts).toHaveLength(1)
-        expect(sample.starts[0]!.offset).toBe(expected + 0.25)
-        expect(sample.starts[0]!.duration).toBe(0.12)
+        expect(sample.starts).toEqual([])
     }
     expect(results.clamped).toBe(0)
     expect(results.clampedAgain).toBe(0)
     expect(results.afterZero).toBe(0.001)
 })
 
-test('clamped steps replace old auditions without replaying queued cursor or note updates', async ({
-    page,
-}) => {
-    const results = await page.evaluate(async () => {
-        const { player, audition } = window.previewTransport
-        const { view, nextTick } = window.editorTest
-        view.cursorTime = 0
-        await nextTick()
-
-        audition.beginAudioPreviewInteraction()
-        audition.requestAudioPreview(8)
-        await nextTick()
-        const previous = window.previewTransport.starts.at(-1)!
-        window.previewTransport.starts = []
-        player.stepPreviewTime(-1)
-        await nextTick()
-        const existing = {
-            stopped: window.previewTransport.stops.includes(previous.id),
-            starts: [...window.previewTransport.starts],
-        }
-
-        window.previewTransport.starts = []
-        audition.beginAudioPreviewInteraction()
-        audition.requestAudioPreview(12)
-        player.stepPreviewTime(-10)
-        await nextTick()
-        const queuedNote = [...window.previewTransport.starts]
-
-        view.cursorTime = 3
-        await nextTick()
-        window.previewTransport.starts = []
-        view.cursorTime = 0
-        player.stepPreviewTime(-100)
-        await nextTick()
-        return {
-            existing,
-            queuedNote,
-            queuedCursor: window.previewTransport.starts,
-            cursor: view.cursorTime,
-        }
-    })
-    expect(results.existing.stopped).toBe(true)
-    expect(results.cursor).toBe(0)
-    for (const starts of [results.existing.starts, results.queuedNote, results.queuedCursor]) {
-        expect(starts).toHaveLength(1)
-        expect(starts[0]!.bgm).toBe(true)
-        expect(starts[0]!.offset).toBe(0.25)
-        expect(starts[0]!.duration).toBe(0.12)
-    }
-})
-
-test('stepping pauses at the displayed cursor and overrides a queued note audition', async ({
-    page,
-}) => {
+test('stepping pauses at the displayed cursor and plays no clip', async ({ page }) => {
     await page.evaluate(async () => {
         window.editorTest.view.cursorTime = 3.333333
         await window.editorTest.nextTick()
@@ -255,14 +200,12 @@ test('stepping pauses at the displayed cursor and overrides a queued note auditi
     expect(stopped.sameState).toBe(true)
     expect(stopped.playing).toBe(false)
     expect(stopped.stops).toContain(playing.id)
-    expect(stopped.starts).toHaveLength(1)
-    expect(stopped.starts[0]!.offset).toBe(stopped.cursor + 0.25)
-    expect(stopped.starts[0]!.duration).toBe(0.12)
+    expect(stopped.starts).toEqual([])
     await page.waitForTimeout(300)
     expect(await page.evaluate(() => window.editorTest.view.cursorTime)).toBe(stopped.cursor)
     expect(
         await page.evaluate(() => window.previewTransport.starts.filter((start) => start.bgm)),
-    ).toEqual(stopped.starts)
+    ).toEqual([])
 })
 
 test('preview starts at its cursor while Space still honors the global start preference', async ({
@@ -384,53 +327,48 @@ test('starting preview playback suppresses a queued audition without duplicating
     expect(result.starts[0]!.duration).toBeUndefined()
 })
 
-test('continuous preview scrubbing stops the tap audition and stays silent until release', async ({
-    page,
-}) => {
+test('a playing clip outlasts preview steps and scrubbing, which play none', async ({ page }) => {
     const result = await page.evaluate(async () => {
         const { player, audition } = window.previewTransport
-        const { view, history, nextTick } = window.editorTest
+        const { view, history, settings, nextTick } = window.editorTest
         const state = history.state.value
+        settings.playPreviewDuration = 1000
+        audition.beginAudioPreviewInteraction()
+        audition.requestAudioPreview(8)
+        await nextTick()
+        const clip = window.previewTransport.starts.find((start) => start.bgm)!
+        window.previewTransport.starts = []
         player.stepPreviewTime(10)
         await nextTick()
-        const tap = window.previewTransport.starts.find((start) => start.bgm)!
         const initial = view.cursorTime
         player.beginPreviewScrub()
-        window.previewTransport.starts = []
         for (let frame = 1; frame <= 24; frame++) {
             player.scrubPreviewTo(initial + frame / 100)
             await nextTick()
         }
-        const during = window.previewTransport.starts.length
-        audition.beginAudioPreviewInteraction()
         audition.requestAudioPreview(18)
         player.scrubPreviewTo(initial + 0.250456)
         const released = view.cursorTime
-        // End in the same task as the final position change: its queued watcher
-        // must not replay either the obsolete note or a second release snippet.
-        player.endPreviewScrub()
         player.endPreviewScrub()
         player.scrubPreviewTo(20)
         await nextTick()
         return {
-            during,
+            clip,
             released,
             cursor: view.cursorTime,
             sameState: history.state.value === state,
             playing: window.previewTransport.isPlaying(),
-            tapStopped: window.previewTransport.stops.includes(tap.id),
+            clipStopped: window.previewTransport.stops.includes(clip.id),
             starts: window.previewTransport.starts.filter((start) => start.bgm),
         }
     })
-    expect(result.during).toBe(0)
-    expect(result.tapStopped).toBe(true)
+    expect(result.clip.offset).toBe(8.25)
+    expect(result.clipStopped).toBe(false)
+    expect(result.starts).toEqual([])
     expect(result.cursor).toBe(result.released)
     expect(result.cursor).toBe(3.01 + 0.250456)
     expect(result.sameState).toBe(true)
     expect(result.playing).toBe(false)
-    expect(result.starts).toHaveLength(1)
-    expect(result.starts[0]!.offset).toBe(result.cursor + 0.25)
-    expect(result.starts[0]!.duration).toBe(0.12)
 })
 
 test('cancelling a preview scrub stops playback and leaves no queued audio or cursor updates', async ({
@@ -447,7 +385,7 @@ test('cancelling a preview scrub stops playback and leaves no queued audio or cu
         audition.beginAudioPreviewInteraction()
         audition.requestAudioPreview(18)
         player.scrubPreviewTo(-1)
-        player.endPreviewScrub(false)
+        player.endPreviewScrub()
         player.scrubPreviewTo(20)
         await window.editorTest.nextTick()
         return {
@@ -577,7 +515,7 @@ test.describe('preview follow', () => {
             const { view } = window.editorTest
             const before = view.time
             window.previewTransport.player.scrubPreviewTo(3)
-            window.previewTransport.player.endPreviewScrub(false)
+            window.previewTransport.player.endPreviewScrub()
             return { before, after: view.time, cursor: view.cursorTime }
         })
         expect(released.before).toBeGreaterThan(retargeted.before)
@@ -612,7 +550,7 @@ test.describe('preview follow', () => {
         expect(await page.evaluate(() => window.editorTest.view.cursorTime)).toBe(0)
         expect(await page.evaluate(() => window.editorTest.view.time)).toBe(0)
         expect(await page.evaluate(() => window.editorTest.view.scrollingY)).toBeUndefined()
-        await page.evaluate(() => window.previewTransport.player.endPreviewScrub(false))
+        await page.evaluate(() => window.previewTransport.player.endPreviewScrub())
     })
 
     test('follow off preserves the viewport until a seek leaves the visible range', async ({
@@ -632,7 +570,7 @@ test.describe('preview follow', () => {
         const offscreen = await page.evaluate(() => {
             window.previewTransport.player.beginPreviewScrub('locked')
             window.previewTransport.player.scrubPreviewTo(20)
-            window.previewTransport.player.endPreviewScrub(false)
+            window.previewTransport.player.endPreviewScrub()
             return {
                 cursor: window.editorTest.view.cursorTime,
                 viewport: window.editorTest.view.time,
@@ -752,7 +690,7 @@ test.describe('preview follow', () => {
             const { player } = window.previewTransport
             const scrolling = view.scrollingY
             player.scrubPreviewTo(4.1)
-            player.endPreviewScrub(false)
+            player.endPreviewScrub()
             player.cancelPreviewFollow()
             return view.scrollingY === scrolling
         })
@@ -859,7 +797,7 @@ test.describe('preview follow', () => {
             expect(await page.evaluate(() => window.editorTest.view.time)).toBe(current.viewport)
         }
         const released = await page.evaluate(() => {
-            window.previewTransport.player.endPreviewScrub(false)
+            window.previewTransport.player.endPreviewScrub()
             return window.editorTest.view.time
         })
         await page.clock.runFor(500)

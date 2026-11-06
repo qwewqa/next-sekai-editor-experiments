@@ -33,7 +33,7 @@ import { clearNotification, notify } from '../../notification'
 import { revealAuthoringTarget } from '../../scope'
 import {
     focusEntityAtBeat,
-    focusViewAtBeat,
+    placeCursorAtBeat,
     setViewHover,
     view,
     xToLane,
@@ -168,7 +168,7 @@ export const brush: Tool = {
                     creating: [],
                 }
 
-                focusViewAtBeat(yToValidBeat(y))
+                placeCursorAtBeat(yToValidBeat(y))
                 if (selectedLength) notify(() => i18n.value.tools.brush.deselected)
             }
         }

@@ -21,7 +21,7 @@ import { notify } from '../../notification'
 import { revealAuthoredEntities } from '../../scope'
 import {
     focusEntityAtBeat,
-    focusViewAtBeat,
+    placeCursorAtBeat,
     setViewHover,
     view,
     xToLane,
@@ -85,7 +85,7 @@ export const generateSlideNotes: Tool = {
                     creating: [],
                 }
 
-                focusViewAtBeat(yToValidBeat(y))
+                placeCursorAtBeat(yToValidBeat(y))
                 if (selectedLength) notify(() => i18n.value.tools.generateSlideNotes.deselected)
             }
         }

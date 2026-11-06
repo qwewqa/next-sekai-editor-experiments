@@ -1090,7 +1090,7 @@
       "previewInWorker": "Rendu de l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Possibilité de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
       "playFollowPosition": "Hauteur à laquelle Suivre maintient le curseur de lecture. 0 correspond au bas de la partie visible de la partition et 100 au haut.",
-      "playPreviewDuration": "Durée de lecture de la musique lorsque vous déplacez le curseur de lecture ou sélectionnez un objet.",
+      "playPreviewDuration": "Durée de lecture de la musique lorsque vous choisissez un moment dans la partition ou sélectionnez un objet.",
       "mouseSecondaryTool": {
         "intro": "Action du clic droit et du glissement avec le bouton droit.",
         "choices": {

@@ -438,6 +438,12 @@ export const focusViewAtBeat = (beat: number) => {
     markTouch('cursor', beat)
 }
 
+/** A tap on the chart: focuses the beat and plays the BGM there. */
+export const placeCursorAtBeat = (beat: number) => {
+    focusViewAtBeat(beat)
+    requestAudioPreview(view.cursorTime)
+}
+
 export const focusView = (t: number, allowDirectJump = true) => {
     view.cursorTime = t
 

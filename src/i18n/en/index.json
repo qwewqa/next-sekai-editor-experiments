@@ -1090,7 +1090,7 @@
             "previewInWorker": "Whether to draw the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
             "toolbarQuickSwitch": "Whether you can hold a toolbar button and release on a tool to choose it.",
             "playFollowPosition": "Where Follow keeps the playback cursor. 0 is the bottom of the visible chart and 100 is the top.",
-            "playPreviewDuration": "How long the BGM plays when you move the playback cursor or select an object.",
+            "playPreviewDuration": "How long the BGM plays when you pick a time in the chart or select an object.",
             "mouseSecondaryTool": {
                 "intro": "What right-click and right-drag do.",
                 "choices": {

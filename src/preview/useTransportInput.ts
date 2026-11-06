@@ -29,7 +29,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     let isWheelScrubbing = false
     let wheelRoot: HTMLElement | undefined
 
-    const finishHold = (audition: boolean) => {
+    const finishHold = () => {
         const current = hold
         if (!current) return
         hold = undefined
@@ -38,7 +38,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
         holdDelay = undefined
         stopScrubClock?.()
         stopScrubClock = undefined
-        if (current.scrub) endPreviewScrub(audition && isAppActive.value)
+        if (current.scrub) endPreviewScrub()
         if (current.type === 'pointer') {
             if (current.target.hasPointerCapture(current.pointerId)) {
                 current.target.releasePointerCapture(current.pointerId)
@@ -47,18 +47,18 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
         }
     }
 
-    const finishWheel = (audition: boolean) => {
+    const finishWheel = () => {
         clearTimeout(wheelDelay)
         wheelDelay = undefined
         document.removeEventListener('pointerdown', onWheelOutsidePointerDown, true)
         wheelRoot = undefined
         if (!isWheelScrubbing) return
         isWheelScrubbing = false
-        endPreviewScrub(audition && isAppActive.value)
+        endPreviewScrub()
     }
 
     const onWheelOutsidePointerDown = (event: PointerEvent) => {
-        if (event.target instanceof Node && !wheelRoot?.contains(event.target)) finishWheel(false)
+        if (event.target instanceof Node && !wheelRoot?.contains(event.target)) finishWheel()
     }
 
     const onWheel = (event: WheelEvent) => {
@@ -78,7 +78,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
         event.stopPropagation()
         // A seek drag holds the scrub until it ends.
         if (isSeekDragging.value) return
-        finishHold(false)
+        finishHold()
         if (!isWheelScrubbing) {
             beginPreviewScrub('locked')
             isWheelScrubbing = true
@@ -87,12 +87,9 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
             document.addEventListener('pointerdown', onWheelOutsidePointerDown, true)
         }
         scrubPreviewTo(view.cursorTime - pixels / 1000)
-        // Trackpads can emit several events per frame. Keep them silent and audition
-        // only the final position after the gesture settles.
+        // A wheel gesture has no end event, so the seek ends once its events stop.
         clearTimeout(wheelDelay)
-        wheelDelay = setTimeout(() => {
-            finishWheel(true)
-        }, 120)
+        wheelDelay = setTimeout(finishWheel, 120)
     }
 
     type Drag = { pointerId: number; x: number; y: number; cursor: number; target: HTMLElement }
@@ -101,7 +98,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     // A drag's release may also click the toggle under it, just after.
     let dragged = false
 
-    const finishDrag = (audition: boolean) => {
+    const finishDrag = () => {
         const current = drag
         if (!current) return
         drag = undefined
@@ -111,7 +108,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
             current.target.releasePointerCapture(current.pointerId)
         if (!isSeekDragging.value) return
         isSeekDragging.value = false
-        endPreviewScrub(audition && isAppActive.value)
+        endPreviewScrub()
         // The press focused what it landed on; shortcuts return to the editor, as after a click.
         const focused = document.activeElement
         if (focused instanceof HTMLElement && current.target.contains(focused)) focused.blur()
@@ -121,7 +118,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
 
     // On the window, as a release outside comes before capture would bring it here.
     const onDragRelease = (event: PointerEvent) => {
-        if (drag?.pointerId === event.pointerId) finishDrag(event.type === 'pointerup')
+        if (drag?.pointerId === event.pointerId) finishDrag()
     }
 
     const onSurfacePointerDown = (event: PointerEvent) => {
@@ -141,7 +138,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
         if (drag?.pointerId !== event.pointerId) return
         // Released where no release reaches the page, as outside the window.
         if (!event.buttons) {
-            finishDrag(false)
+            finishDrag()
             return
         }
         const dx = event.clientX - drag.x
@@ -151,10 +148,10 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
             // Its way past the slop decides: a mostly vertical press never seeks, nor
             // one while a step is held.
             if (Math.abs(dx) < Math.abs(dy) || hold) {
-                finishDrag(false)
+                finishDrag()
                 return
             }
-            finishWheel(false)
+            finishWheel()
             beginPreviewScrub('locked')
             // From where it starts, so seeking begins at zero and runs straight both ways.
             drag.cursor = view.cursorTime
@@ -167,7 +164,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     }
 
     const onSurfaceCaptureLost = (event: PointerEvent) => {
-        if (drag?.pointerId === event.pointerId) finishDrag(false)
+        if (drag?.pointerId === event.pointerId) finishDrag()
     }
 
     /** Whether a pointer click comes from a seek drag's release, which then takes it. */
@@ -180,8 +177,8 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     const startHold = (current: Hold) => {
         if (hold || isSeekDragging.value || !isAppActive.value) return false
         // A press that hasn't begun seeking gives way.
-        finishDrag(false)
-        finishWheel(false)
+        finishDrag()
+        finishWheel()
         stepPreviewTime(current.milliseconds)
         hold = current
         activeStep.value = current.milliseconds
@@ -211,7 +208,7 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
 
     const onPointerDown = (event: PointerEvent, milliseconds: number) => {
         if (event.button !== 0 || !event.isPrimary) return
-        if (hold?.type === 'keyboard') finishHold(false)
+        if (hold?.type === 'keyboard') finishHold()
         const target = event.currentTarget as HTMLButtonElement
         if (startHold({ type: 'pointer', pointerId: event.pointerId, target, milliseconds })) {
             target.setPointerCapture(event.pointerId)
@@ -219,11 +216,11 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     }
 
     const onPointerUp = (event: PointerEvent) => {
-        if (hold?.type === 'pointer' && hold.pointerId === event.pointerId) finishHold(true)
+        if (hold?.type === 'pointer' && hold.pointerId === event.pointerId) finishHold()
     }
 
     const onPointerCancel = (event: PointerEvent) => {
-        if (hold?.type === 'pointer' && hold.pointerId === event.pointerId) finishHold(false)
+        if (hold?.type === 'pointer' && hold.pointerId === event.pointerId) finishHold()
     }
 
     const onStepKeydown = (event: KeyboardEvent, milliseconds: number) => {
@@ -241,18 +238,18 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     const onStepKeyup = (event: KeyboardEvent) => {
         if (event.key !== ' ' && event.key !== 'Enter') return
         event.preventDefault()
-        if (hold?.type === 'keyboard' && hold.key === event.key) finishHold(true)
+        if (hold?.type === 'keyboard' && hold.key === event.key) finishHold()
     }
 
     const onStepBlur = (event: FocusEvent) => {
-        if (hold?.type === 'keyboard' && hold.target === event.currentTarget) finishHold(false)
+        if (hold?.type === 'keyboard' && hold.target === event.currentTarget) finishHold()
     }
 
     const onStepClick = (event: MouseEvent, milliseconds: number) => {
         // Pointer and keyboard presses are handled above. Assistive technology can
         // activate a button with a click alone and still gets one exact step.
         if (!event.detail && !hold) {
-            finishWheel(false)
+            finishWheel()
             stepPreviewTime(milliseconds)
         }
     }
@@ -260,19 +257,19 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
     watch(
         [visible, isPlaying, interruptsDrags],
         ([shown, playing, interrupted], [wasShown]) => {
-            if (!shown || playing || interrupted) finishHold(false)
-            if (playing || interrupted) finishDrag(false)
+            if (!shown || playing || interrupted) finishHold()
+            if (playing || interrupted) finishDrag()
             // Seeking also works with the controls hidden. Only a transition to
             // hidden, playback, or an interruption cancels an active wheel gesture.
-            if ((wasShown && !shown) || playing || interrupted) finishWheel(false)
+            if ((wasShown && !shown) || playing || interrupted) finishWheel()
         },
         { flush: 'sync' },
     )
 
     onUnmounted(() => {
-        finishHold(false)
-        finishWheel(false)
-        finishDrag(false)
+        finishHold()
+        finishWheel()
+        finishDrag()
     })
     return {
         activeStep,
@@ -290,9 +287,9 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
         onStepBlur,
         onStepClick,
         cancel: () => {
-            finishHold(false)
-            finishWheel(false)
-            finishDrag(false)
+            finishHold()
+            finishWheel()
+            finishDrag()
         },
     }
 }

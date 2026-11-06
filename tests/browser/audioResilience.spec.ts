@@ -21,6 +21,7 @@ declare global {
             context?: AudioContext
             contexts: AudioContext[]
             player?: typeof import('../../src/editor/player')
+            audition?: typeof import('../../src/editor/audioPreview')
             isPlaying?: () => boolean
             decoded: number
             starts: ScheduledSource[]
@@ -196,6 +197,9 @@ test.beforeEach(async ({ page }) => {
         probe.player = (await import(
             urls.get('/src/editor/player.ts') ?? '/src/editor/player.ts'
         )) as typeof import('../../src/editor/player')
+        probe.audition = (await import(
+            urls.get('/src/editor/audioPreview.ts') ?? '/src/editor/audioPreview.ts'
+        )) as typeof import('../../src/editor/audioPreview')
         const { isPlaying } = (await import(
             urls.get('/src/player.ts') ?? '/src/player.ts'
         )) as typeof import('../../src/player')
@@ -405,15 +409,15 @@ test('pausing immediately after a stalled frame captures the audio position', as
 
 test('backgrounding cancels a queued audition before the audio flush', async ({ page }) => {
     const result = await page.evaluate(async () => {
-        const { player, starts } = window.audioResilience
+        const { audition, starts } = window.audioResilience
         window.editorTest.settings.playPreviewDuration = 120
-        player!.stepPreviewTime(10)
+        audition!.requestAudioPreview(0.01)
         Object.defineProperty(document, 'hasFocus', { configurable: true, value: () => false })
         window.dispatchEvent(new Event('blur'))
         await window.editorTest.nextTick()
-        return { sources: starts.length, cursor: window.editorTest.view.cursorTime }
+        return { sources: starts.length }
     })
-    expect(result).toEqual({ sources: 0, cursor: 0.01 })
+    expect(result).toEqual({ sources: 0 })
     await page.evaluate(() => {
         Reflect.deleteProperty(document, 'hasFocus')
         window.dispatchEvent(new Event('focus'))
@@ -427,7 +431,7 @@ test('backgrounding cancels an audition whose audio resume is still pending', as
     const source = await page.evaluate(async () => {
         const probe = window.audioResilience
         window.editorTest.settings.playPreviewDuration = 120
-        probe.player!.stepPreviewTime(10)
+        probe.audition!.requestAudioPreview(0.01)
         await window.editorTest.nextTick()
         return probe.starts[0]!
     })
@@ -447,7 +451,7 @@ test('backgrounding cancels an audition whose audio resume is still pending', as
     }))
     expect(result.starts).toHaveLength(1)
     expect(result.stopped).toContain(source.id)
-    expect(result.cursor).toBe(0.01)
+    expect(result.cursor).toBe(0)
 })
 
 for (const action of ['pause', 'blur'] as const) {
@@ -716,11 +720,11 @@ test('an audition that has not started by the deadline never plays, even when th
     page,
 }) => {
     await page.evaluate(async () => {
-        const { context, player } = window.audioResilience
+        const { context, audition } = window.audioResilience
         await context!.suspend()
         context!.resume = () => new Promise<void>(() => {})
         window.editorTest.settings.playPreviewDuration = 120
-        player!.stepPreviewTime(10)
+        audition!.requestAudioPreview(0.01)
     })
     await expect.poll(() => page.evaluate(() => window.audioResilience.starts.length)).toBe(1)
     const audition = await page.evaluate(() => window.audioResilience.starts[0]!.id)

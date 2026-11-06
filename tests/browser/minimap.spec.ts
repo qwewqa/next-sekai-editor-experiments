@@ -1086,7 +1086,7 @@ test.describe('indicator', () => {
                 )
             player.beginPreviewScrub('locked')
             player.scrubPreviewTo(seconds)
-            player.endPreviewScrub(false)
+            player.endPreviewScrub()
         }, seconds)
 
     test('playback with Follow moves the cursor and the box and paints nothing', async ({

@@ -1090,7 +1090,7 @@
       "previewInWorker": "是否与编辑器的其他部分并行绘制预览。如果预览显示异常或没有显示，请关闭此项。",
       "toolbarQuickSwitch": "是否可以按住工具栏按钮，再在要选择的工具上松开。",
       "playFollowPosition": "“跟随”将播放光标保持的位置。可见谱面的底部为 0，顶部为 100。",
-      "playPreviewDuration": "移动播放光标或选择对象时背景音乐的播放时长。",
+      "playPreviewDuration": "在谱面中选择时间点或选择对象时背景音乐的播放时长。",
       "mouseSecondaryTool": {
         "intro": "右键单击和按住右键拖动的操作。",
         "choices": {

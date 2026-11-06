@@ -1090,7 +1090,7 @@
       "previewInWorker": "미리보기를 편집기의 나머지 부분과 병렬로 그릴지 여부. 미리보기가 이상하게 보이거나 나타나지 않으면 이 설정을 끄세요.",
       "toolbarQuickSwitch": "도구 모음 버튼을 누른 채 원하는 도구 위에서 놓아 선택할 수 있게 할지 여부.",
       "playFollowPosition": "따라가기가 재생 커서를 유지할 위치. 보이는 채보의 아래쪽이 0, 위쪽이 100입니다.",
-      "playPreviewDuration": "재생 커서를 옮기거나 객체를 선택할 때 배경음을 재생할 시간.",
+      "playPreviewDuration": "채보에서 시점을 고르거나 객체를 선택할 때 배경음을 재생할 시간.",
       "mouseSecondaryTool": {
         "intro": "오른쪽 클릭과 오른쪽 버튼 드래그의 동작.",
         "choices": {

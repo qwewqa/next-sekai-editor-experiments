@@ -10,6 +10,7 @@ export const beginAudioPreviewInteraction = () => {
     lastTime = undefined
 }
 
+// Only for a time the user picks for the cursor or an object, never for moving through time.
 export const requestAudioPreview = (time: number) => {
     if (time === lastTime) return
     lastTime = time

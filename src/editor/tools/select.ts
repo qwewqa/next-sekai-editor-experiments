@@ -95,8 +95,8 @@ import { isLatticeMoved, type Lattice } from '../snapping'
 import { stepTapCycle, tapCycleSlack, type TapCycle } from '../tapCycle'
 import {
     focusEntityAtBeat,
-    focusViewAtBeat,
     markTouchBeat,
+    placeCursorAtBeat,
     setViewHover,
     toMovedBeat,
     view,
@@ -325,7 +325,7 @@ export const select: Tool = {
                     ),
                 )
             } else {
-                focusViewAtBeat(yToValidBeat(y))
+                placeCursorAtBeat(yToValidBeat(y))
 
                 if (selectedLength) notify(() => i18n.value.tools.select.deselected)
             }

@@ -11,7 +11,6 @@ type TransportDependencies = {
         /** Smoothed for drawing. */
         getDisplayTime(): number | undefined
         audition(time: number): void
-        stopAudition(): void
     }
     view: Pick<typeof view, 'cursorTime' | 'time' | 'h' | 'scrollingY'>
     settings: Pick<typeof settings, 'playFollow' | 'playFollowPosition' | 'pps'>
@@ -47,7 +46,7 @@ export const createTransport = ({
     // Reactive, so drawing can tell a scrub from a rest.
     const scrub = shallowRef<'smooth' | 'locked'>()
     let followScroll: typeof view.scrollingY
-    let pendingAudition: { time: number; source: 'cursor' | 'note' | 'transport' } | undefined
+    let pendingAudition: number | undefined
 
     const followTime = (cursorTime: number) =>
         Math.max(
@@ -55,19 +54,10 @@ export const createTransport = ({
             cursorTime + ((0.5 - settings.playFollowPosition / 100) * view.h) / settings.pps,
         )
 
-    const queueAudition = (time: number, source: 'cursor' | 'note' | 'transport') => {
-        if (playback.value || scrub.value) return
-        // A note audition has its own position, independent of cursor changes
-        // made by the same editor interaction. Explicit transport actions replace it.
-        if (source === 'cursor' && pendingAudition?.source === 'note') return
-        pendingAudition = { time, source }
-        queueFlush()
-    }
-
     const flushAudition = () => {
-        const pending = pendingAudition
+        const time = pendingAudition
         pendingAudition = undefined
-        if (pending && !playback.value && !scrub.value) audio.audition(pending.time)
+        if (time !== undefined && !playback.value && !scrub.value) audio.audition(time)
     }
 
     const update = () => {
@@ -118,7 +108,6 @@ export const createTransport = ({
             if (settings.playFollow) view.time = followTime(cursorTime)
         }
         stop()
-        pendingAudition = undefined
     }
 
     const seek = (seconds: number) => {
@@ -153,15 +142,12 @@ export const createTransport = ({
         followScroll = view.scrollingY
     }
 
-    const endScrub = (audition = true) => {
-        if (!scrub.value) return
+    const endScrub = () => {
         scrub.value = undefined
-        pendingAudition = undefined
-        if (audition) audio.audition(view.cursorTime)
     }
 
     const play = (seconds: number) => {
-        endScrub(false)
+        endScrub()
         cancelFollow()
         pendingAudition = undefined
         const current = { returnTime: seconds }
@@ -174,22 +160,15 @@ export const createTransport = ({
 
     const step = (milliseconds: number) => {
         if (!Number.isFinite(milliseconds)) return
-        endScrub(false)
+        endScrub()
         stop()
         view.scrollingY = undefined
-        const previousTime = view.cursorTime
-        seek(Math.max(0, previousTime + milliseconds / 1000))
-        pendingAudition = undefined
-        // Clamped steps still replace an old snippet, even without a cursor change.
-        if (view.cursorTime === previousTime) audio.audition(view.cursorTime)
-        else queueAudition(view.cursorTime, 'transport')
+        seek(Math.max(0, view.cursorTime + milliseconds / 1000))
     }
 
     const beginScrub = (follow: 'smooth' | 'locked' = 'smooth') => {
         if (scrub.value) return
         stop()
-        audio.stopAudition()
-        pendingAudition = undefined
         view.scrollingY = undefined
         scrub.value = follow
         if (follow === 'locked' && settings.playFollow) seek(view.cursorTime)
@@ -237,10 +216,9 @@ export const createTransport = ({
         cancelFollow,
         changeSpeed,
         audition: (time: number) => {
-            queueAudition(time, 'note')
-        },
-        cursorChanged: (time: number) => {
-            queueAudition(time, 'cursor')
+            if (playback.value || scrub.value) return
+            pendingAudition = time
+            queueFlush()
         },
         flushAudition,
     }
