@@ -170,7 +170,8 @@ export type MovePlan = {
     // Whether the anchor's stage lattice moved there, so absolute lane snapping can't wait.
     latticeMoved: boolean
     // Once the move changes a lane or beat: the lane shifts the lane limit allows the objects whose
-    // lanes move, as one group, and the object, if only one, that it also fits alone.
+    // lanes move, as one group, and the object, if only one, that it also fits alone. A resize of
+    // several objects has the shifts of their moving edges.
     shifts?: LaneShifts
     lone?: Entity
 }
@@ -968,12 +969,21 @@ const withLaneLimit = (
     lane: number,
     beatOffset: number,
 ): MovePlan => {
-    if (
-        !(settings.maxLane > 0) ||
-        (lane === active.lane && plan.beat === active.focus.beat) ||
-        isSelectResize(active.onlyType, active.focus, active.lane)
-    )
+    if (!(settings.maxLane > 0) || (lane === active.lane && plan.beat === active.focus.beat))
         return plan
+    if (isSelectResize(active.onlyType, active.focus, active.lane)) {
+        // One resized object keeps its own limit.
+        const resized = active.entities.filter((entity) => movesLane(active.onlyType, entity))
+        const focus = laneSpanOf(active.focus)
+        if (resized.length < 2 || !focus) return plan
+        const fixedLeft = active.lane >= (focus[0] + focus[1]) / 2
+        const edges = resized.flatMap((entity) => {
+            const span = laneSpanOf(entity)
+            const edge = span?.[fixedLeft ? 1 : 0]
+            return edge === undefined ? [] : [[edge, edge] as const]
+        })
+        return { ...plan, shifts: getLaneShifts(edges) }
+    }
     const moving = active.entities.filter(
         (entity) =>
             !isPinned(entity, beatOffset) &&
@@ -1073,7 +1083,7 @@ const toMovedCameraEventObject = (
             edge,
             [entity.cameraLeft, entity.cameraSize],
             undefined,
-            resizeShift(focusEdge, focusEdge + (lane - startLane)),
+            limitLaneShift(resizeShift(focusEdge, focusEdge + (lane - startLane)), plan.shifts),
         )
 
         return constrainLaneObject(
@@ -1131,7 +1141,7 @@ const toMovedStageMaskEventObject = (
             edge,
             [entity.maskLeft, entity.maskSize],
             undefined,
-            resizeShift(focusEdge, focusEdge + (lane - startLane)),
+            limitLaneShift(resizeShift(focusEdge, focusEdge + (lane - startLane)), plan.shifts),
         )
 
         return constrainLaneObject(
@@ -1269,11 +1279,14 @@ const toMovedNoteObject = (
         const fixedLeft = startLane >= focus.left + focus.size / 2
         const edge = entity.left + (fixedLeft ? entity.size : 0)
         const focusEdge = focus.left + (fixedLeft ? focus.size : 0)
-        // The grabbed edge's snapped shift moves every selected edge.
-        const shift = resizeShift(
-            focusEdge,
-            focusEdge + (lane - startLane),
-            getComposedLayout() ? getComposedGridOffset(focus.stageId, focus.beat) : 0,
+        // The grabbed edge's snapped shift moves every selected edge, held to the lane limit.
+        const shift = limitLaneShift(
+            resizeShift(
+                focusEdge,
+                focusEdge + (lane - startLane),
+                getComposedLayout() ? getComposedGridOffset(focus.stageId, focus.beat) : 0,
+            ),
+            plan.shifts,
         )
 
         const [left, size] = resize(

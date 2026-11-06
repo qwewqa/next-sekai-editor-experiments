@@ -602,7 +602,8 @@ let drag:
           fixedLeft: boolean
           movingEdge: number
           // A move's lane shifts the lane limit allows its notes as one group, and the note, if
-          // only one, that it also fits alone.
+          // only one, that it also fits alone. A resize of several notes has the shifts of their
+          // moving edges.
           shifts?: LaneShifts
           lone?: NoteEntity
           // Raw pointer lane delta, and each resized note's result.
@@ -715,11 +716,16 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
               edge,
               [note.left, note.size],
               undefined,
-              resizeShift(
-                  active.movingEdge,
-                  active.movingEdge + active.shift,
-                  active.composed ? active.origin : 0,
-              ),
+              active.shift === 0
+                  ? 0
+                  : limitLaneShift(
+                        resizeShift(
+                            active.movingEdge,
+                            active.movingEdge + active.shift,
+                            active.composed ? active.origin : 0,
+                        ),
+                        active.shifts,
+                    ),
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
@@ -1136,12 +1142,19 @@ const controls: Pick<
             origin: getElevationStageProps(row.note.stageId, elevationBeat.value).gridOffset,
             composed: !!getComposedLayout(state.value),
         }
-        // As the chart's, the notes whose lanes move shift as one group; an attached row moves
-        // only elevations.
-        if (!drag.resizing && !row.attached) {
-            const lanes = drag.targets.filter(
-                (note) => getNoteFieldsIn(state.value.store, note).left,
-            )
+        // As the chart's, the notes whose lanes move shift as one group, and several resized
+        // notes' moving edges do; an attached row moves only elevations.
+        const lanes = drag.targets.filter((note) => getNoteFieldsIn(state.value.store, note).left)
+        if (drag.resizing) {
+            const fixedLeft = drag.fixedLeft
+            if (lanes.length > 1)
+                drag.shifts = getLaneShifts(
+                    lanes.map((note) => {
+                        const edge = note.left + (fixedLeft ? note.size : 0)
+                        return [edge, edge]
+                    }),
+                )
+        } else if (!row.attached) {
             drag.shifts = getLaneShifts(lanes.map((note) => [note.left, note.left + note.size]))
             drag.lone = lanes.length === 1 ? lanes[0] : undefined
         }

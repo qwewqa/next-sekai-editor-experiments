@@ -398,10 +398,10 @@ test('switching limits refreshes a stationary hover ghost without changing the c
 })
 
 for (const tool of ['select', 'note', 'slide'] as const) {
-    test(`${tool} resize stops at the boundary and preserves the opposite edge`, async ({
+    test(`${tool} resize of one note stops at the boundary and preserves the opposite edge`, async ({
         page,
     }) => {
-        await seed(page, true)
+        await seedSlides(page, [[{ beat: 4, left: 0, size: 2 }]])
         await page.evaluate(async (name) => {
             const { switchToolTo } = await import('/src/editor/tools/index.ts')
             switchToolTo(name)
@@ -412,6 +412,54 @@ for (const tool of ['select', 'note', 'slide'] as const) {
         expect(first.size).toBe(6)
     })
 }
+
+test('a selection resize moves every right edge by one shift, stopping at the limit', async ({
+    page,
+}) => {
+    await seedSlides(page, [[{ beat: 4, left: 0, size: 2 }], [{ beat: 8, left: 3, size: 2 }]])
+    await page.keyboard.press('f')
+    const preview = await dragChart(page, [1.95, 4], [9, 4])
+    // The second note's right edge meets 6 after one lane.
+    expect(preview).toEqual([
+        { beat: 4, left: 0, size: 3 },
+        { beat: 8, left: 3, size: 3 },
+    ])
+    expect(await placed(page)).toEqual(preview)
+})
+
+test('a selection resize moves every left edge by one shift, stopping at the limit', async ({
+    page,
+}) => {
+    await seedSlides(page, [[{ beat: 4, left: -2, size: 2 }], [{ beat: 8, left: -5, size: 2 }]])
+    await page.keyboard.press('f')
+    const preview = await dragChart(page, [-1.95, 4], [-12, 4])
+    expect(preview).toEqual([
+        { beat: 4, left: -3, size: 3 },
+        { beat: 8, left: -6, size: 3 },
+    ])
+    expect(await placed(page)).toEqual(preview)
+})
+
+test('a selection resize keeps minimum widths while another edge goes on to the limit', async ({
+    page,
+}) => {
+    await seedSlides(page, [[{ beat: 4, left: 2, size: 1 }], [{ beat: 8, left: -5, size: 5 }]])
+    await page.evaluate(() => {
+        window.editorTest.view.laneDivision = 1
+    })
+    await page.keyboard.press('f')
+    // One lane in, the narrow note is at its minimum width.
+    expect(await dragChart(page, [2.95, 4], [2.15, 4])).toEqual([
+        { beat: 4, left: 2, size: 1 },
+        { beat: 8, left: -5, size: 4 },
+    ])
+    await page.keyboard.press('z')
+    // The wide note's right edge stops the shift at 6 lanes; the narrow one passes its left edge.
+    expect(await dragChart(page, [2.95, 4], [-12, 4])).toEqual([
+        { beat: 4, left: -3, size: 5 },
+        { beat: 8, left: -6, size: 1 },
+    ])
+})
 
 test('a narrow custom limit keeps camera events valid and centered', async ({ page }) => {
     await seed(page)
@@ -647,6 +695,39 @@ test('each event tool clamps its live drag preview and committed horizontal coor
             }),
         ).toEqual(draft)
     }
+})
+
+test('an elevation multi-selection edge drag moves every edge by one shift, stopping at the limit', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { show, fixtures, settings, history } = window.editorTest
+        const chart = fixtures.interaction
+        const note = chart.slides[0]![0]!
+        settings.maxLane = 6
+        settings.elevationEditorSideBySide = 'disallow'
+        show(
+            {
+                ...chart,
+                slides: [
+                    [{ ...note, beat: 4, left: 0, size: 2, elevation: 1 }],
+                    [{ ...note, beat: 4, left: 3, size: 2, elevation: 3 }],
+                ],
+            },
+            3,
+        )
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
+        })
+    })
+    await page.keyboard.press('t')
+    await expect(page.locator('.elevation-canvas')).toBeVisible()
+    await drag(page, await elevationPoint(page, 1.95, 1), await elevationPoint(page, 9, 1))
+    expect((await notes(page)).map(({ left, size }) => ({ left, size }))).toEqual([
+        { left: 0, size: 3 },
+        { left: 3, size: 3 },
+    ])
 })
 
 test('an elevation multi-selection drag moves the notes as one, stopping at the limit', async ({
