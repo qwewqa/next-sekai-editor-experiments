@@ -76,6 +76,16 @@ const ciExclusions: CiExclusion[] = [
         title: 'a root size change with History open and peeking',
         reason: 'a storage write fails on the runner (StoragePausedError on both attempts); the underlying error is not known',
     },
+    {
+        spec: 'touch.spec.ts',
+        title: 'a tap shows the marker at the cursor it placed',
+        reason: 'in the main job (4 workers) the first tap shows no marker, overlay empty and hover labels hidden, in all three tries; passes locally and with 2 workers; see run 42153287995',
+    },
+    {
+        spec: 'levelInfo.spec.ts',
+        title: 'Make from BGM. and Edit in Cover Editor',
+        reason: 'in the main job (4 workers) Cover Editor Generate is still working after 15 s, with nothing logged; the whole test takes 7 to 12 s with 2 workers; see run 42153287995',
+    },
 ]
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // NSE_RUN_EXCLUDED=1 runs only those tests, once each, and CI sets it in a job of its own (Browsers Full) that
