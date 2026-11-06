@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { outlinePixels, resource } from './previewResourceFixture'
 
@@ -466,6 +467,16 @@ test('both hosts draw the same pixels, paused and playing, with everything selec
     const pages = await pair(browser)
     const compare = async (label: string) => {
         const [main, worker] = (await Promise.all(pages.map(shot))) as [Buffer, Buffer]
+        // Both images, kept with the failure output, so a mismatch on a CI runner shows what differs.
+        if (!worker.equals(main))
+            for (const [host, body] of [
+                ['main', main],
+                ['worker', worker],
+            ] as const) {
+                const path = test.info().outputPath(`${label} ${host}.png`)
+                await writeFile(path, body)
+                await test.info().attach(`${label} ${host}`, { path, contentType: 'image/png' })
+            }
         if (browserName === 'chromium') {
             expect(worker.equals(main), label).toBe(true)
             return
