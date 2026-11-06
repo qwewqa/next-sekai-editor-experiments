@@ -457,6 +457,8 @@ const pair = async (browser: Browser) => {
 const shot = async (page: Page) => {
     await settle(page)
     await settle(page)
+    // The worker host's frames are drawn when the worker answers.
+    await page.evaluate(() => window.nsePreviewTest?.settled())
     return page.locator('.preview-viewport').screenshot({ animations: 'disabled' })
 }
 
