@@ -177,11 +177,11 @@ const drawUntilHandover = async (page: Page) => {
                 async () =>
                     (await hostOf(page)) === 'main' ||
                     (await page.evaluate(() => window.previewTest.frames)) > frames,
-                { timeout: 10_000 },
+                { timeout: 20_000 },
             )
             .toBe(true)
     }
-    await expect.poll(() => hostOf(page), { timeout: 10_000 }).toBe('main')
+    await expect.poll(() => hostOf(page), { timeout: 20_000 }).toBe('main')
 }
 
 const diagnostics = (page: Page) =>
@@ -405,12 +405,15 @@ for (const [label, flags, decodedAgain] of [
     ['its WebGL2 context is unavailable', { noWebgl: true }, false],
     ['an error escapes the worker', { throwOnStart: true }, false],
     ['it throws while drawing', { throwOnFrame: 3 }, false],
-    ['a frame gets no answer', { hangOnFrame: 3, timeoutMs: 1500 }, true],
+    // Longer than a CI runner takes to start the worker, so the hang is what stops it.
+    ['a frame gets no answer', { hangOnFrame: 3, timeoutMs: 8000 }, true],
 ] as const) {
     test(`the preview draws on the main thread when the worker fails: ${label}`, async ({
         page,
     }) => {
         await open(page, 'worker', flags)
+        if (!('noWebgl' in flags) && !('throwOnStart' in flags))
+            expect(await hostOf(page)).toBe('worker')
         await drawUntilHandover(page)
         await expect.poll(() => page.evaluate(() => window.hostTest.mainFrames)).toBeGreaterThan(0)
         await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
