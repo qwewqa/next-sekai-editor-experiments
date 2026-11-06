@@ -69,6 +69,7 @@ import { replaceNote } from '../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale, replaceTimeScale } from '../../state/mutations/timeScale'
 import { replaceBpmsAt } from '../../state/operations/bpm'
 import { changedNativeCounts, editInput } from '../../state/operations/historyReceipts'
+import { laneSpanOf } from '../../state/operations/laneLimits'
 import { editChanges } from '../../state/operations/properties/plan'
 import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
@@ -86,7 +87,14 @@ import {
     isComposedLatticeMoved,
 } from '../composedView'
 import type { Modifiers } from '../controls/gestures/pointer'
-import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
+import {
+    constrainLaneObject,
+    getLaneShifts,
+    limitLaneShift,
+    minimumNoteSize,
+    movesLane,
+    type LaneShifts,
+} from '../laneLimits'
 import { clearNotification, notify } from '../notification'
 import { hitOffscreenIndicator, selectOffscreenNotes } from '../offscreenIndicators'
 import { sceneState, toSceneEntity } from '../sceneState'
@@ -113,7 +121,6 @@ import {
     hitAllEntitiesInSelection,
     isSelectResize,
     modifyEntities,
-    moveLane,
     offset,
     pointHitsAt,
     resize,
@@ -162,6 +169,10 @@ export type MovePlan = {
     beat: number
     // Whether the anchor's stage lattice moved there, so absolute lane snapping can't wait.
     latticeMoved: boolean
+    // Once the move changes a lane or beat: the lane shifts the lane limit allows the objects whose
+    // lanes move, as one group, and the object, if only one, that it also fits alone.
+    shifts?: LaneShifts
+    lone?: Entity
 }
 
 let active:
@@ -912,13 +923,18 @@ const moveSelectedLane = (
     startLane: number,
     lane: number,
     anchor: Entity,
-    rawMove?: RawMove,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ) =>
     rawMove
         ? rawMove.unconstrained
             ? value + rawMove.delta
-            : shiftComputed(value, rawMove.delta)
-        : moveLane(value, startLane, lane, getLaneAnchor(anchor))
+            : shiftLane(value, rawMove.delta, plan)
+        : shiftLane(
+              value,
+              offset(startLane, lane, getLaneAnchor(anchor), 0, lane - startLane),
+              plan,
+          )
 
 /** The starting BPM and time scales. */
 const isInitial = (entity: Entity) =>
@@ -941,9 +957,46 @@ const toPointerMove = (active: MoveActive, x: number, y: number) => ({
 })
 
 export const planMove = (source: State, active: MoveActive, lane: number, beatOffset: number) => {
-    const plan = getMovePlan(source, active, beatOffset)
+    const plan = withLaneLimit(active, getMovePlan(source, active, beatOffset), lane, beatOffset)
     return { plan, rawMove: getRawMove(source, active, lane, beatOffset, plan) }
 }
+
+/** The lane limit holds a move, once it changes a lane or beat, with its objects as one group. */
+const withLaneLimit = (
+    active: MoveActive,
+    plan: MovePlan,
+    lane: number,
+    beatOffset: number,
+): MovePlan => {
+    if (
+        !(settings.maxLane > 0) ||
+        (lane === active.lane && plan.beat === active.focus.beat) ||
+        isSelectResize(active.onlyType, active.focus, active.lane)
+    )
+        return plan
+    const moving = active.entities.filter(
+        (entity) =>
+            !isPinned(entity, beatOffset) &&
+            // A tick taken past its slide's end moves as a note.
+            ((entity.type === 'note' && plan.bases.has(entity)) ||
+                movesLane(active.onlyType, entity)),
+    )
+    const spans = moving.flatMap((entity) => {
+        const span = laneSpanOf(
+            entity.type === 'note' ? (plan.bases.get(entity) ?? entity) : entity,
+        )
+        return span ? [span] : []
+    })
+    return {
+        ...plan,
+        shifts: getLaneShifts(spans),
+        lone: moving.length === 1 ? moving[0] : undefined,
+    }
+}
+
+// A lane shifted by the move, held to the lane limit with the rest of the group.
+const shiftLane = (value: number, shift: number, plan: MovePlan) =>
+    shiftComputed(value, limitLaneShift(shift, plan.shifts))
 
 const isUnmoved = (
     active: MoveActive,
@@ -982,7 +1035,8 @@ const toMovedTimeScaleObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ): TimeScaleObject =>
     constrainLaneObject(
         {
@@ -990,15 +1044,10 @@ const toMovedTimeScaleObject = (
             beat,
             editorLane:
                 onlyType === 'timeScale'
-                    ? moveSelectedLane(entity.editorLane, startLane, lane, focus, rawMove)
+                    ? moveSelectedLane(entity.editorLane, startLane, lane, focus, rawMove, plan)
                     : entity.editorLane,
         },
-        {
-            enabled:
-                !rawMove?.unconstrained &&
-                entity === focus &&
-                (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: !rawMove?.unconstrained && entity === plan.lone },
     )
 
 const toMovedCameraEventObject = (
@@ -1047,14 +1096,16 @@ const toMovedCameraEventObject = (
         {
             ...entity,
             beat,
-            cameraLeft: moveSelectedLane(entity.cameraLeft, startLane, lane, plan.anchor, rawMove),
+            cameraLeft: moveSelectedLane(
+                entity.cameraLeft,
+                startLane,
+                lane,
+                plan.anchor,
+                rawMove,
+                plan,
+            ),
         },
-        {
-            enabled:
-                !rawMove?.unconstrained &&
-                entity === focus &&
-                (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: !rawMove?.unconstrained && entity === plan.lone },
     )
 }
 
@@ -1103,14 +1154,16 @@ const toMovedStageMaskEventObject = (
         {
             ...entity,
             beat,
-            maskLeft: moveSelectedLane(entity.maskLeft, startLane, lane, plan.anchor, rawMove),
+            maskLeft: moveSelectedLane(
+                entity.maskLeft,
+                startLane,
+                lane,
+                plan.anchor,
+                rawMove,
+                plan,
+            ),
         },
-        {
-            enabled:
-                !rawMove?.unconstrained &&
-                entity === focus &&
-                (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: !rawMove?.unconstrained && entity === plan.lone },
     )
 }
 
@@ -1119,7 +1172,6 @@ const toMovedStagePivotEventObject = (
     startLane: number,
     lane: number,
     beat: number,
-    focus: Entity,
     rawMove: RawMove | undefined,
     plan: MovePlan,
 ): StagePivotEventObject =>
@@ -1127,14 +1179,16 @@ const toMovedStagePivotEventObject = (
         {
             ...entity,
             beat,
-            pivotLane: moveSelectedLane(entity.pivotLane, startLane, lane, plan.anchor, rawMove),
+            pivotLane: moveSelectedLane(
+                entity.pivotLane,
+                startLane,
+                lane,
+                plan.anchor,
+                rawMove,
+                plan,
+            ),
         },
-        {
-            enabled:
-                !rawMove?.unconstrained &&
-                entity === focus &&
-                (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: !rawMove?.unconstrained && entity === plan.lone },
     )
 
 const toMovedStageStyleEventObject = (
@@ -1144,7 +1198,8 @@ const toMovedStageStyleEventObject = (
     lane: number,
     beat: number,
     focus: Entity,
-    rawMove?: RawMove,
+    rawMove: RawMove | undefined,
+    plan: MovePlan,
 ): StageStyleEventObject =>
     constrainLaneObject(
         {
@@ -1152,15 +1207,10 @@ const toMovedStageStyleEventObject = (
             beat,
             editorLane:
                 onlyType === 'stageStyleEventJoint'
-                    ? moveSelectedLane(entity.editorLane, startLane, lane, focus, rawMove)
+                    ? moveSelectedLane(entity.editorLane, startLane, lane, focus, rawMove, plan)
                     : entity.editorLane,
         },
-        {
-            enabled:
-                !rawMove?.unconstrained &&
-                entity === focus &&
-                (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: !rawMove?.unconstrained && entity === plan.lone },
     )
 
 const toMovedStageTransformEventObject = (
@@ -1168,7 +1218,6 @@ const toMovedStageTransformEventObject = (
     startLane: number,
     lane: number,
     beat: number,
-    focus: Entity,
     rawMove: RawMove | undefined,
     plan: MovePlan,
 ): StageTransformEventObject =>
@@ -1182,14 +1231,10 @@ const toMovedStageTransformEventObject = (
                 lane,
                 plan.anchor,
                 rawMove,
+                plan,
             ),
         },
-        {
-            enabled:
-                !rawMove?.unconstrained &&
-                entity === focus &&
-                (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: !rawMove?.unconstrained && entity === plan.lone },
     )
 
 const toMovedNoteObject = (
@@ -1213,16 +1258,11 @@ const toMovedNoteObject = (
                 beat,
                 left: rawMove.unconstrained
                     ? from.left + rawMove.delta
-                    : shiftComputed(from.left, rawMove.delta),
+                    : shiftLane(from.left, rawMove.delta, plan),
                 size: from.size,
                 elevation: from.elevation,
             },
-            {
-                enabled:
-                    !rawMove.unconstrained &&
-                    entity === focus &&
-                    (lane !== startLane || beat !== entity.beat),
-            },
+            { enabled: !rawMove.unconstrained && entity === plan.lone },
         )
     }
     if (focus.type === 'note' && isSelectResize(onlyType, focus, startLane)) {
@@ -1277,23 +1317,24 @@ const toMovedNoteObject = (
         {
             ...entity,
             beat,
-            left: moveLane(
+            left: shiftLane(
                 from.left,
-                startLane,
-                lane + correction,
-                getLaneAnchor(plan.anchor),
-                composed && plan.anchor.type === 'note'
-                    ? getComposedGridOffset(plan.anchor.stageId, plan.beat, destination)
-                    : 0,
-                // A moved stage lattice snaps at once.
-                plan.latticeMoved ? Number.POSITIVE_INFINITY : lane - startLane,
+                offset(
+                    startLane,
+                    lane + correction,
+                    getLaneAnchor(plan.anchor),
+                    composed && plan.anchor.type === 'note'
+                        ? getComposedGridOffset(plan.anchor.stageId, plan.beat, destination)
+                        : 0,
+                    // A moved stage lattice snaps at once.
+                    plan.latticeMoved ? Number.POSITIVE_INFINITY : lane - startLane,
+                ),
+                plan,
             ),
             size: from.size,
             elevation: from.elevation,
         },
-        {
-            enabled: entity === focus && (lane !== startLane || beat !== entity.beat),
-        },
+        { enabled: entity === plan.lone },
     )
 }
 
@@ -1312,9 +1353,9 @@ const creates: {
     [T in Entity as T['type']]: Create<T> | undefined
 } = {
     bpm: (onlyType, entity, startLane, lane, beat) => toBpmEntity(toMovedBpmObject(entity, beat)),
-    timeScale: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    timeScale: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toTimeScaleEntity(
-            toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, focus, rawMove, plan),
         ),
 
     cameraEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
@@ -1340,19 +1381,28 @@ const creates: {
 
     stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toStagePivotEventJointEntity(
-            toMovedStagePivotEventObject(entity, startLane, lane, beat, focus, rawMove, plan),
+            toMovedStagePivotEventObject(entity, startLane, lane, beat, rawMove, plan),
         ),
     stagePivotEventConnection: undefined,
 
-    stageStyleEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove) =>
+    stageStyleEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toStageStyleEventJointEntity(
-            toMovedStageStyleEventObject(onlyType, entity, startLane, lane, beat, focus, rawMove),
+            toMovedStageStyleEventObject(
+                onlyType,
+                entity,
+                startLane,
+                lane,
+                beat,
+                focus,
+                rawMove,
+                plan,
+            ),
         ),
     stageStyleEventConnection: undefined,
 
     stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, focus, rawMove, plan) =>
         toStageTransformEventJointEntity(
-            toMovedStageTransformEventObject(entity, startLane, lane, beat, focus, rawMove, plan),
+            toMovedStageTransformEventObject(entity, startLane, lane, beat, rawMove, plan),
         ),
     stageTransformEventConnection: undefined,
 
@@ -1426,6 +1476,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            plan,
         )
         if (object.beat === entity.beat && object.groupId === entity.groupId)
             return replaceTimeScale(transaction, entity, object)
@@ -1518,15 +1569,7 @@ const moves: {
         rawMove,
         plan,
     ) => {
-        const object = toMovedStagePivotEventObject(
-            entity,
-            startLane,
-            lane,
-            beat,
-            focus,
-            rawMove,
-            plan,
-        )
+        const object = toMovedStagePivotEventObject(entity, startLane, lane, beat, rawMove, plan)
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStagePivotEventJoint(transaction, entity, object)
 
@@ -1545,6 +1588,7 @@ const moves: {
         focus,
         kept,
         rawMove,
+        plan,
     ) => {
         const object = toMovedStageStyleEventObject(
             onlyType,
@@ -1554,6 +1598,7 @@ const moves: {
             beat,
             focus,
             rawMove,
+            plan,
         )
         if (object.beat === entity.beat && object.stageId === entity.stageId)
             return replaceStageStyleEventJoint(transaction, entity, object)
@@ -1580,7 +1625,6 @@ const moves: {
             startLane,
             lane,
             beat,
-            focus,
             rawMove,
             plan,
         )

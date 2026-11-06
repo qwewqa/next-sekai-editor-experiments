@@ -154,7 +154,7 @@ for (const tool of [
     })
 }
 
-test('a selection drag clamps only the dragged note, with matching preview and undo', async ({
+test('a selection drag brings a group past the limit within it whole, with matching preview and undo', async ({
     page,
 }) => {
     await seed(page, true)
@@ -171,14 +171,184 @@ test('a selection drag clamps only the dragged note, with matching preview and u
             .selectedEntities.filter((entity) => entity.type === 'note')
             .map(({ left, size }) => ({ left, size }))
     })
+    // From 0 to 7, it shifts one lane back in rather than further out.
     expect(draft).toEqual([
+        { left: -1, size: 2 },
         { left: 4, size: 2 },
-        { left: 13, size: 2 },
     ])
     await page.mouse.up()
     expect((await notes(page)).map(({ left, size }) => ({ left, size }))).toEqual(draft)
     await page.keyboard.press('z')
     expect((await notes(page)).map(({ left }) => left)).toEqual([0, 5])
+})
+
+type Seeded = { beat: number; left: number; size: number; isAttached?: boolean }
+
+/** Shows slides with every note selected, at a lane limit of 6. */
+const seedSlides = (page: Page, slides: Seeded[][]) =>
+    page.evaluate((slides) => {
+        const { settings, fixtures, show, history } = window.editorTest
+        settings.maxLane = 6
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                slides: slides.map((slide) =>
+                    slide.map((note) => ({ ...base, ...note, isAttached: !!note.isAttached })),
+                ),
+            },
+            3,
+        )
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
+        })
+    }, slides)
+
+const placed = async (page: Page) =>
+    (await notes(page))
+        .map(({ left, size, beat }) => ({ beat, left, size }))
+        .sort((a, b) => a.beat - b.beat)
+
+const previewed = (page: Page) =>
+    page.evaluate(async () => {
+        const { getPreviewState } = await import('/src/preview/edit.ts')
+        return getPreviewState(window.editorTest.history.state.value)
+            .selectedEntities.filter((entity) => entity.type === 'note')
+            .map(({ beat, left, size }) => ({ beat, left, size }))
+            .sort((a, b) => a.beat - b.beat)
+    })
+
+/** Drags in the chart and reads the preview before the drop. */
+const dragChart = async (
+    page: Page,
+    from: [lane: number, beat: number],
+    to: [lane: number, beat: number],
+) => {
+    const start = await point(page, ...from)
+    const end = await point(page, ...to)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    await page.mouse.move(end.x, end.y, { steps: 5 })
+    await settle(page)
+    const preview = await previewed(page)
+    await page.mouse.up()
+    return preview
+}
+
+test('a selection drag moves notes of different widths as one, stopping at the limit', async ({
+    page,
+}) => {
+    await seedSlides(page, [[{ beat: 4, left: -2, size: 1 }], [{ beat: 8, left: 1, size: 3 }]])
+    await page.keyboard.press('f')
+    const preview = await dragChart(page, [-1.5, 4], [9, 4])
+    // The wider note's right edge meets 6, so both move two lanes.
+    expect(preview).toEqual([
+        { beat: 4, left: 0, size: 1 },
+        { beat: 8, left: 3, size: 3 },
+    ])
+    expect(await placed(page)).toEqual(preview)
+    await page.keyboard.press('z')
+    expect((await placed(page)).map(({ left }) => left)).toEqual([-2, 1])
+})
+
+test('a selection drag keeps the shape of a slide at the limit, with or without a beat change', async ({
+    page,
+}) => {
+    await seedSlides(page, [
+        [
+            { beat: 2, left: -1, size: 1 },
+            { beat: 4, left: 2, size: 1 },
+            { beat: 6, left: 4, size: 1 },
+        ],
+    ])
+    await page.keyboard.press('f')
+    const left = await dragChart(page, [-0.5, 2], [-12, 2])
+    expect(left.map(({ left }) => left)).toEqual([-6, -3, -1])
+    expect(await placed(page)).toEqual(left)
+    await page.keyboard.press('z')
+    const later = await dragChart(page, [-0.5, 2], [12, 3])
+    expect(later).toEqual([
+        { beat: 3, left: 0, size: 1 },
+        { beat: 5, left: 3, size: 1 },
+        { beat: 7, left: 5, size: 1 },
+    ])
+    expect(await placed(page)).toEqual(later)
+})
+
+test('a selection drag by an attached tick keeps the shape of its slide at the limit', async ({
+    page,
+}) => {
+    await seedSlides(page, [
+        [
+            { beat: 2, left: 0, size: 2 },
+            { beat: 4, left: 0, size: 2, isAttached: true },
+            { beat: 6, left: 3, size: 2 },
+        ],
+    ])
+    await page.keyboard.press('f')
+    // The tick sits halfway, from 1.5 to 3.5.
+    await dragChart(page, [2.5, 4], [12, 4])
+    expect(await placed(page)).toEqual([
+        { beat: 2, left: 1, size: 2 },
+        { beat: 4, left: 2.5, size: 2 },
+        { beat: 6, left: 4, size: 2 },
+    ])
+})
+
+test('a selection drag moves notes and events as one group', async ({ page }) => {
+    const moved = await page.evaluate(async () => {
+        const { show, fixtures, history, store, settings, appImport } = window.editorTest
+        const select = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        settings.maxLane = 6
+        const note = fixtures.interaction.slides[0]![0]!
+        show({
+            ...fixtures.events,
+            isDynamicStages: true,
+            cameraEvents: [
+                { ...fixtures.events.cameraEvents[0]!, beat: 4, cameraLeft: -3, cameraSize: 6 },
+            ],
+            stageMaskEvents: [],
+            stagePivotEvents: [{ ...fixtures.events.stagePivotEvents[0]!, beat: 4, pivotLane: 5 }],
+            stageStyleEvents: [],
+            stageTransformEvents: [],
+            timeScales: [],
+            slides: [[{ ...note, beat: 4, left: -1, size: 2 }]],
+        })
+        const source = history.state.value
+        const entities = [...store.getAllEntities()].filter(
+            (entity) =>
+                entity.type === 'note' ||
+                entity.type === 'cameraEventJoint' ||
+                entity.type === 'stagePivotEventJoint',
+        )
+        const focus = entities.find((entity) => entity.type === 'note')!
+        const active = {
+            type: 'move' as const,
+            lane: 0,
+            focus,
+            entities,
+            onlyType: undefined,
+            pressBeat: focus.beat,
+        }
+        const { plan, rawMove } = select.planMove(source, active, 10, 0)
+        return select
+            .moveEntities(source, active, 10, 0, plan, rawMove)
+            .state.selectedEntities.map((entity) =>
+                entity.type === 'note'
+                    ? entity.left
+                    : entity.type === 'cameraEventJoint'
+                      ? entity.cameraLeft
+                      : entity.type === 'stagePivotEventJoint'
+                        ? entity.pivotLane
+                        : NaN,
+            )
+            .sort((a, b) => a - b)
+    })
+    // The pivot at 5 stops the group one lane on.
+    expect(moved).toEqual([-2, 0, 6])
 })
 
 test('clicks and sub-threshold pointer movement leave existing out-of-range notes unchanged', async ({
@@ -283,6 +453,34 @@ test('paste hover and placement both clamp copied notes', async ({ page }) => {
             window.editorTest.history.state.value.selectedEntities
                 .filter((entity) => entity.type === 'note')
                 .map(({ left, size }) => ({ left, size })),
+        ),
+    ).toEqual(ghost)
+})
+
+test('a pasted group keeps its shape against the limit', async ({ page }) => {
+    await seedSlides(page, [[{ beat: 4, left: -2, size: 1 }], [{ beat: 8, left: 1, size: 3 }]])
+    await page.keyboard.press('c')
+    await page.keyboard.press('v')
+    const target = await point(page, 9, 12)
+    await page.mouse.move(target.x, target.y)
+    await settle(page)
+    const ghost = await page.evaluate(() =>
+        window.editorTest.view.entities.creating
+            .filter((entity) => entity.type === 'note')
+            .map(({ left, size }) => ({ left, size }))
+            .sort((a, b) => a.left - b.left),
+    )
+    expect(ghost).toEqual([
+        { left: 0, size: 1 },
+        { left: 3, size: 3 },
+    ])
+    await page.mouse.click(target.x, target.y)
+    expect(
+        await page.evaluate(() =>
+            window.editorTest.history.state.value.selectedEntities
+                .filter((entity) => entity.type === 'note')
+                .map(({ left, size }) => ({ left, size }))
+                .sort((a, b) => a.left - b.left),
         ),
     ).toEqual(ghost)
 })
@@ -451,7 +649,9 @@ test('each event tool clamps its live drag preview and committed horizontal coor
     }
 })
 
-test('elevation multi-selection clamping changes only the dragged note', async ({ page }) => {
+test('an elevation multi-selection drag moves the notes as one, stopping at the limit', async ({
+    page,
+}) => {
     await page.evaluate(() => {
         const { show, fixtures, settings, history } = window.editorTest
         const chart = fixtures.interaction
@@ -463,7 +663,7 @@ test('elevation multi-selection clamping changes only the dragged note', async (
                 ...chart,
                 slides: [
                     [{ ...note, beat: 4, left: 0, size: 2, elevation: 1 }],
-                    [{ ...note, beat: 4, left: 5, size: 2, elevation: 3 }],
+                    [{ ...note, beat: 4, left: 3, size: 2, elevation: 3 }],
                 ],
             },
             3,
@@ -476,5 +676,5 @@ test('elevation multi-selection clamping changes only the dragged note', async (
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-canvas')).toBeVisible()
     await drag(page, await elevationPoint(page, 1, 1), await elevationPoint(page, 9, 1))
-    expect((await notes(page)).map(({ left }) => left)).toEqual([4, 13])
+    expect((await notes(page)).map(({ left }) => left)).toEqual([1, 4])
 })

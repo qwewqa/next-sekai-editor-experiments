@@ -123,12 +123,13 @@ test('paste offsets leave clean lanes', async ({ page }) => {
     await seed(page, 0.2, 0.1)
     const moved = await page.evaluate(async () => {
         const { appImport, store } = window.editorTest
-        const { toMovedNoteObject } = await appImport<
+        const { toBasicPasteLanes, toMovedNoteObject } = await appImport<
             typeof import('../../src/editor/tools/paste/index')
         >('/src/editor/tools/paste/index.ts')
         const entity = [...store.getAllEntities()].find((e) => e.type === 'note')!
         return [false, true].map((flip) => {
-            const { left, size } = toMovedNoteObject(entity as never, 0, 0.1, 5, flip)
+            const lanes = toBasicPasteLanes([entity], undefined, 0, 0.1, flip)
+            const { left, size } = toMovedNoteObject(entity as never, lanes, 5)
             return { left, size }
         })
     })
@@ -152,11 +153,12 @@ test('values an edit leaves where they were stay exact', async ({ page }) => {
     await seed(page, left, size)
     const pasted = await page.evaluate(async () => {
         const { appImport, store } = window.editorTest
-        const { toMovedNoteObject } = await appImport<
+        const { toBasicPasteLanes, toMovedNoteObject } = await appImport<
             typeof import('../../src/editor/tools/paste/index')
         >('/src/editor/tools/paste/index.ts')
         const entity = [...store.getAllEntities()].find((e) => e.type === 'note')!
-        const { left, size } = toMovedNoteObject(entity as never, 2.5, 2.5, 5, false)
+        const lanes = toBasicPasteLanes([entity], undefined, 2.5, 2.5, false)
+        const { left, size } = toMovedNoteObject(entity as never, lanes, 5)
         return { left, size }
     })
     expect(pasted).toEqual({ left, size })

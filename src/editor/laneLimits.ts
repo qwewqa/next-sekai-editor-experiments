@@ -1,7 +1,9 @@
 import type { NoteType } from '../chart/note'
 import { settings } from '../settings'
+import type { Entity, EntityType } from '../state/entities'
 import type { EditableObject } from '../state/operations/editable'
-import { constrainLaneObject as constrain } from '../state/operations/laneLimits'
+import { constrainLaneObject as constrain, laneShiftRange } from '../state/operations/laneLimits'
+import { clamp } from '../utils/math'
 import { view } from './view'
 
 export const minimumNoteSize = (noteType: NoteType | undefined) =>
@@ -22,3 +24,43 @@ export const constrainLaneObject = <T extends EditableObject>(
               minimumNoteSize('noteType' in object ? object.noteType : undefined),
           )
         : object
+
+export type LaneShifts = readonly [min: number, max: number]
+
+/**
+ * The lane shifts the lane limit allows objects that move as one group, from their spans before
+ * the shift; undefined without a limit.
+ */
+export const getLaneShifts = (spans: Iterable<readonly [number, number]>): LaneShifts | undefined =>
+    laneShiftRange(spans, settings.maxLane)
+
+/** A group's lane shift, held to the lane limit. */
+export const limitLaneShift = (shift: number, shifts: LaneShifts | undefined) =>
+    shifts ? clamp(shift, shifts[0], shifts[1]) : shift
+
+/**
+ * Whether moving a selection shifts an object's lane: an attached tick follows its slide, and
+ * editor lanes move only in a selection of their own type.
+ */
+export const movesLane = (onlyType: EntityType | undefined, entity: Entity) => {
+    switch (entity.type) {
+        case 'note':
+            return !entity.isAttached
+        case 'timeScale':
+        case 'stageStyleEventJoint':
+            return onlyType === entity.type
+        case 'cameraEventJoint':
+        case 'stageMaskEventJoint':
+        case 'stagePivotEventJoint':
+        case 'stageTransformEventJoint':
+            return true
+        case 'bpm':
+        case 'connector':
+        case 'cameraEventConnection':
+        case 'stageMaskEventConnection':
+        case 'stagePivotEventConnection':
+        case 'stageStyleEventConnection':
+        case 'stageTransformEventConnection':
+            return false
+    }
+}

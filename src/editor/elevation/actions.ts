@@ -13,7 +13,7 @@ import { attachFraction } from '../../state/mutations/slides'
 import { addNote } from '../../state/mutations/slides/note'
 import { countNativeEntities } from '../../state/operations/historyReceipts'
 import { createTransaction } from '../../state/transaction'
-import { alignComputed, lerp, shiftComputed } from '../../utils/math'
+import { lerp } from '../../utils/math'
 import { getComposedLayout } from '../composedView'
 import type { Modifiers } from '../controls/gestures/pointer'
 import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
@@ -26,8 +26,10 @@ import {
     getPasteNoteEntities,
     pasteAtPosition,
     showNoteGhost,
+    toBasicPasteLanes,
     toMovedNoteObject,
     toPasteBeatOffset,
+    toPasteLanes,
 } from '../tools/paste'
 import {
     getSelectedSlideId,
@@ -232,26 +234,15 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
               data.beat,
           ) ?? 0)
         : undefined
-    const mapNote = (note: NoteEntity, destinationBeat: number) => {
-        const moved = toMovedNoteObject(
-            note,
-            data.lane,
-            lane,
-            destinationBeat,
-            modifiers.shift,
-            false,
-        )
-        return constrainLaneObject({
-            ...moved,
-            ...(delta !== undefined && {
-                left: modifiers.shift
-                    ? alignComputed(2 * data.lane - note.left - note.size + delta)
-                    : shiftComputed(note.left, delta),
-                size: note.size,
-            }),
-            elevation: note.elevation + elevationDelta,
-        })
-    }
+    // One shift for every note, held to the lane limit as in the chart's paste.
+    const lanes =
+        delta === undefined
+            ? toBasicPasteLanes(notes, 'note', data.lane, lane, modifiers.shift)
+            : toPasteLanes(notes, 'note', data.lane, delta, modifiers.shift)
+    const mapNote = (note: NoteEntity, destinationBeat: number) => ({
+        ...toMovedNoteObject(note, lanes, destinationBeat),
+        elevation: note.elevation + elevationDelta,
+    })
     return { notes, mapNote, beatOffset, startLane: data.lane }
 }
 

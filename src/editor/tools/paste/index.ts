@@ -67,6 +67,7 @@ import {
     nonEmpty,
     optionalCounts,
 } from '../../../state/operations/historyReceipts'
+import { laneSpanOf } from '../../../state/operations/laneLimits'
 import { createStore } from '../../../state/store/creates'
 import { getInStoreGrid } from '../../../state/store/grid'
 import type { StoreSlides } from '../../../state/store/slides'
@@ -78,7 +79,7 @@ import { createComposedLayout } from '../../composed'
 import { inverseAffine } from '../../composedPointer'
 import type { Modifiers } from '../../controls/gestures/pointer'
 import { isDragging } from '../../controls/gestures/recognizers/drag'
-import { constrainLaneObject } from '../../laneLimits'
+import { constrainLaneObject, getLaneShifts, limitLaneShift, movesLane } from '../../laneLimits'
 import { notify } from '../../notification'
 import { revealAuthoringTarget, scopeLookup } from '../../scope'
 import { entityScopeIds } from '../../scopeRules'
@@ -358,6 +359,13 @@ export const paste: Tool = {
         }
 
         const selectedEntities: Entity[] = []
+        const lanes = toBasicPasteLanes(
+            landing(dragging.entities),
+            dragging.onlyType,
+            dragging.lane,
+            lane,
+            modifiers.shift,
+        )
         for (const entity of dragging.entities) {
             const beat = toMovedBeat(entity.beat, beatOffset)
 
@@ -365,10 +373,8 @@ export const paste: Tool = {
                 transaction,
                 dragging.onlyType,
                 entity as never,
-                dragging.lane,
-                lane,
+                lanes,
                 beat,
-                modifiers.shift,
                 selectedEntities,
                 displaced,
             )
@@ -532,26 +538,20 @@ const showGhost = (
     const creating: Entity[] = []
     const slides = new Map<SlideId, NoteObject[]>()
     const pastedBpms: BpmObject[] = []
+    const lanes = toBasicPasteLanes(landing(entities), onlyType, startLane, lane, flip)
     for (const entity of entities) {
         const beat = toMovedBeat(entity.beat, beatOffset)
         if (!isLanding(entity)) continue
         if (entity.type === 'bpm') pastedBpms.push(toMovedBpmObject(entity, beat))
         if (entity.type === 'note') {
-            const object = toMovedNoteObject(entity, startLane, lane, beat, flip)
+            const object = toMovedNoteObject(entity, lanes, beat)
             const slide = slides.get(entity.slideId)
             if (slide) slide.push(object)
             else slides.set(entity.slideId, [object])
             continue
         }
 
-        const result = creates[entity.type]?.(
-            onlyType,
-            entity as never,
-            startLane,
-            lane,
-            beat,
-            flip,
-        )
+        const result = creates[entity.type]?.(onlyType, entity as never, lanes, beat)
         if (result) creating.push(result)
     }
 
@@ -645,6 +645,55 @@ const isEventJoint = (entity: Entity) =>
 const isLanding = (entity: Entity) => isDynamicStages.value || !isEventJoint(entity)
 const landing = (entities: Entity[]) => entities.filter(isLanding)
 
+/** Where a paste puts lanes: mirrored about `start` when flipped, then shifted. */
+export type PasteLanes = {
+    start: number
+    shift: number
+    flip: boolean
+    // Whether one object's lane moves, which the lane limit also fits alone.
+    lone: boolean
+}
+
+const unmovedLanes: PasteLanes = { start: 0, shift: 0, flip: false, lone: false }
+
+/** A pasted lane; a span flips about its other edge. */
+const pastedLane = ({ start, shift, flip }: PasteLanes, value: number, size = 0) =>
+    flip ? alignComputed(2 * start - value - size + shift) : shiftComputed(value, shift)
+
+/** A paste's lanes, its shift held to the lane limit with the pasted objects as one group. */
+export const toPasteLanes = (
+    entities: Entity[],
+    onlyType: EntityType | undefined,
+    start: number,
+    shift: number,
+    flip: boolean,
+): PasteLanes => {
+    const moving = entities.filter((entity) => movesLane(onlyType, entity))
+    const spans = moving.flatMap((entity) => {
+        const span = laneSpanOf(entity)
+        if (!span) return []
+        return [flip ? ([2 * start - span[1], 2 * start - span[0]] as const) : span]
+    })
+    return {
+        start,
+        shift: limitLaneShift(shift, getLaneShifts(spans)),
+        flip,
+        lone: moving.length === 1,
+    }
+}
+
+/** A paste's lanes from the copied lane to the pointer's, both on the lane division. */
+export const toBasicPasteLanes = (
+    entities: Entity[],
+    onlyType: EntityType | undefined,
+    startLane: number,
+    lane: number,
+    flip: boolean,
+) => {
+    const start = alignLane(startLane)
+    return toPasteLanes(entities, onlyType, start, alignLane(lane) - start, flip)
+}
+
 /** Shifts a paste later so its earliest object lands no earlier than beat 0. */
 export const toPasteBeatOffset = (entities: readonly { beat: number }[], beatOffset: number) =>
     entities.reduce((offset, entity) => Math.max(offset, -entity.beat), beatOffset)
@@ -703,13 +752,14 @@ export const pasteAtPosition = async (
     }
 
     const selectedEntities: Entity[] = []
+    const lanes = toBasicPasteLanes(landing(entities), onlyType, data.lane, lane, modifiers.shift)
     for (const entity of entities) {
         const beat = toMovedBeat(entity.beat, shiftedOffset)
 
         if (entity.type === 'note' && options.mapNote) {
             selectedEntities.push(
                 ...addNote(transaction, entity.slideId, {
-                    ...toMovedNoteObject(entity, data.lane, lane, beat, modifiers.shift),
+                    ...toMovedNoteObject(entity, lanes, beat),
                     ...options.mapNote(entity, beat),
                 }),
             )
@@ -720,10 +770,8 @@ export const pasteAtPosition = async (
             transaction,
             onlyType,
             entity as never,
-            data.lane,
-            lane,
+            lanes,
             beat,
-            modifiers.shift,
             selectedEntities,
             displaced,
         )
@@ -776,15 +824,14 @@ const buildComposedPaste = (
     if (!notes.length) {
         const transaction = createTransaction(state.value)
         const selected: Entity[] = []
+        const lanes = toBasicPasteLanes(landing(entities), onlyType, startLane, lane, flip)
         for (const entity of entities) {
             const added = pastes[entity.type]?.(
                 transaction,
                 onlyType,
                 entity as never,
-                startLane,
-                lane,
+                lanes,
                 toMovedBeat(entity.beat, beatOffset),
-                flip,
                 selected,
                 displaced,
             )
@@ -918,18 +965,15 @@ const pasteAuthored = (
 ) => {
     const transaction = createTransaction(state.value)
     const selected: Entity[] = []
+    const lanes = toPasteLanes(landing(entities), undefined, anchor, delta, flip)
     const move = (left: number, size = 0) =>
-        limited
-            ? flip
-                ? alignComputed(2 * anchor - left - size + delta)
-                : shiftComputed(left, delta)
-            : (flip ? 2 * anchor - left - size : left) + delta
+        limited ? pastedLane(lanes, left, size) : (flip ? 2 * anchor - left - size : left) + delta
     for (const entity of entities) {
         const common = { ...entity, beat: toMovedBeat(entity.beat, beatOffset) }
         const stageId =
             'stageId' in entity ? (view.stageId ?? entity.stageId) : defaultStageId.value
         const limit = <T extends Parameters<typeof constrainLaneObject>[0]>(object: T) =>
-            constrainLaneObject(object, { enabled: limited })
+            constrainLaneObject(object, { enabled: limited && lanes.lone })
         let added: Entity[] | undefined
         switch (entity.type) {
             case 'bpm':
@@ -939,10 +983,8 @@ const pasteAuthored = (
                     transaction,
                     undefined,
                     entity as never,
-                    0,
-                    0,
+                    unmovedLanes,
                     common.beat,
-                    false,
                     selected,
                     displaced,
                 )
@@ -1187,115 +1229,105 @@ const toMovedBpmObject = (entity: BpmEntity, beat: number): BpmObject => ({
 const toMovedTimeScaleObject = (
     onlyType: EntityType | undefined,
     entity: TimeScaleEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ): TimeScaleObject =>
-    constrainLaneObject({
-        ...entity,
-        groupId: view.groupId ?? entity.groupId,
-        beat,
-        editorLane:
-            onlyType === 'timeScale'
-                ? flip
-                    ? alignComputed(-entity.editorLane + alignLane(startLane) + alignLane(lane))
-                    : shiftComputed(entity.editorLane, alignLane(lane) - alignLane(startLane))
-                : entity.editorLane,
-    })
+    constrainLaneObject(
+        {
+            ...entity,
+            groupId: view.groupId ?? entity.groupId,
+            beat,
+            editorLane:
+                onlyType === 'timeScale' ? pastedLane(lanes, entity.editorLane) : entity.editorLane,
+        },
+        { enabled: lanes.lone },
+    )
 
 const toMovedCameraEventObject = (
     entity: CameraEventJointEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ): CameraEventObject =>
-    constrainLaneObject({
-        ...entity,
-        beat,
-        cameraLeft: flip
-            ? alignComputed(
-                  -(entity.cameraLeft + entity.cameraSize) + alignLane(startLane) + alignLane(lane),
-              )
-            : shiftComputed(entity.cameraLeft, alignLane(lane) - alignLane(startLane)),
-        cameraZoomTargetLane: flip ? -entity.cameraZoomTargetLane : entity.cameraZoomTargetLane,
-        cameraRotation: flip ? -entity.cameraRotation : entity.cameraRotation,
-    })
+    constrainLaneObject(
+        {
+            ...entity,
+            beat,
+            cameraLeft: pastedLane(lanes, entity.cameraLeft, entity.cameraSize),
+            cameraZoomTargetLane: lanes.flip
+                ? -entity.cameraZoomTargetLane
+                : entity.cameraZoomTargetLane,
+            cameraRotation: lanes.flip ? -entity.cameraRotation : entity.cameraRotation,
+        },
+        { enabled: lanes.lone },
+    )
 
 const toMovedStageMaskEventObject = (
     entity: StageMaskEventJointEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ): StageMaskEventObject =>
-    constrainLaneObject({
-        ...entity,
-        stageId: view.stageId ?? entity.stageId,
-        beat,
-        maskLeft: flip
-            ? alignComputed(
-                  -(entity.maskLeft + entity.maskSize) + alignLane(startLane) + alignLane(lane),
-              )
-            : shiftComputed(entity.maskLeft, alignLane(lane) - alignLane(startLane)),
-    })
+    constrainLaneObject(
+        {
+            ...entity,
+            stageId: view.stageId ?? entity.stageId,
+            beat,
+            maskLeft: pastedLane(lanes, entity.maskLeft, entity.maskSize),
+        },
+        { enabled: lanes.lone },
+    )
 
 const toMovedStagePivotEventObject = (
     entity: StagePivotEventJointEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ): StagePivotEventObject =>
-    constrainLaneObject({
-        ...entity,
-        stageId: view.stageId ?? entity.stageId,
-        beat,
-        pivotLane: flip
-            ? alignComputed(-entity.pivotLane + alignLane(startLane) + alignLane(lane))
-            : shiftComputed(entity.pivotLane, alignLane(lane) - alignLane(startLane)),
-    })
+    constrainLaneObject(
+        {
+            ...entity,
+            stageId: view.stageId ?? entity.stageId,
+            beat,
+            pivotLane: pastedLane(lanes, entity.pivotLane),
+        },
+        { enabled: lanes.lone },
+    )
 
 const toMovedStageStyleEventObject = (
     onlyType: EntityType | undefined,
     entity: StageStyleEventJointEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ): StageStyleEventObject =>
-    constrainLaneObject({
-        ...entity,
-        stageId: view.stageId ?? entity.stageId,
-        beat,
-        editorLane:
-            onlyType === 'stageStyleEventJoint'
-                ? flip
-                    ? alignComputed(-entity.editorLane + alignLane(startLane) + alignLane(lane))
-                    : shiftComputed(entity.editorLane, alignLane(lane) - alignLane(startLane))
-                : entity.editorLane,
-        leftBorderStyle: flip ? entity.rightBorderStyle : entity.leftBorderStyle,
-        rightBorderStyle: flip ? entity.leftBorderStyle : entity.rightBorderStyle,
-    })
+    constrainLaneObject(
+        {
+            ...entity,
+            stageId: view.stageId ?? entity.stageId,
+            beat,
+            editorLane:
+                onlyType === 'stageStyleEventJoint'
+                    ? pastedLane(lanes, entity.editorLane)
+                    : entity.editorLane,
+            leftBorderStyle: lanes.flip ? entity.rightBorderStyle : entity.leftBorderStyle,
+            rightBorderStyle: lanes.flip ? entity.leftBorderStyle : entity.rightBorderStyle,
+        },
+        { enabled: lanes.lone },
+    )
 
 const toMovedStageTransformEventObject = (
     entity: StageTransformEventJointEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ): StageTransformEventObject =>
-    constrainLaneObject({
-        ...entity,
-        stageId: view.stageId ?? entity.stageId,
-        beat,
-        rotation: flip ? -entity.rotation : entity.rotation,
-        centerXOffset: flip ? -entity.centerXOffset : entity.centerXOffset,
-        xTranslation: flip
-            ? alignComputed(-entity.xTranslation + alignLane(startLane) + alignLane(lane))
-            : shiftComputed(entity.xTranslation, alignLane(lane) - alignLane(startLane)),
-    })
+    constrainLaneObject(
+        {
+            ...entity,
+            stageId: view.stageId ?? entity.stageId,
+            beat,
+            rotation: lanes.flip ? -entity.rotation : entity.rotation,
+            centerXOffset: lanes.flip ? -entity.centerXOffset : entity.centerXOffset,
+            xTranslation: pastedLane(lanes, entity.xTranslation),
+        },
+        { enabled: lanes.lone },
+    )
 
 const flippedFlickDirections: Record<FlickDirection, FlickDirection> = {
     none: 'none',
@@ -1309,11 +1341,8 @@ const flippedFlickDirections: Record<FlickDirection, FlickDirection> = {
 
 export const toMovedNoteObject = (
     entity: NoteEntity,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
-    limited = true,
 ): NoteObject =>
     constrainLaneObject(
         {
@@ -1321,64 +1350,50 @@ export const toMovedNoteObject = (
             groupId: view.groupId ?? entity.groupId,
             stageId: view.stageId ?? entity.stageId,
             beat,
-            left: flip
-                ? alignComputed(
-                      -(entity.left + entity.size) + alignLane(startLane) + alignLane(lane),
-                  )
-                : shiftComputed(entity.left, alignLane(lane) - alignLane(startLane)),
-            flickDirection: flip
+            left: pastedLane(lanes, entity.left, entity.size),
+            flickDirection: lanes.flip
                 ? flippedFlickDirections[entity.flickDirection]
                 : entity.flickDirection,
         },
-        { enabled: limited },
+        { enabled: lanes.lone },
     )
 
 type Create<T extends Entity> = (
     onlyType: EntityType | undefined,
     entity: T,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
 ) => Entity | undefined
 
 const creates: {
     [T in Entity as T['type']]: Create<T> | undefined
 } = {
-    bpm: (onlyType, entity, startLane, lane, beat) => toBpmEntity(toMovedBpmObject(entity, beat)),
-    timeScale: (onlyType, entity, startLane, lane, beat, flip) =>
-        toTimeScaleEntity(toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, flip)),
+    bpm: (onlyType, entity, lanes, beat) => toBpmEntity(toMovedBpmObject(entity, beat)),
+    timeScale: (onlyType, entity, lanes, beat) =>
+        toTimeScaleEntity(toMovedTimeScaleObject(onlyType, entity, lanes, beat)),
 
-    cameraEventJoint: (onlyType, entity, startLane, lane, beat, flip) =>
-        toCameraEventJointEntity(toMovedCameraEventObject(entity, startLane, lane, beat, flip)),
+    cameraEventJoint: (onlyType, entity, lanes, beat) =>
+        toCameraEventJointEntity(toMovedCameraEventObject(entity, lanes, beat)),
     cameraEventConnection: undefined,
 
-    stageMaskEventJoint: (onlyType, entity, startLane, lane, beat, flip) =>
-        toStageMaskEventJointEntity(
-            toMovedStageMaskEventObject(entity, startLane, lane, beat, flip),
-        ),
+    stageMaskEventJoint: (onlyType, entity, lanes, beat) =>
+        toStageMaskEventJointEntity(toMovedStageMaskEventObject(entity, lanes, beat)),
     stageMaskEventConnection: undefined,
 
-    stagePivotEventJoint: (onlyType, entity, startLane, lane, beat, flip) =>
-        toStagePivotEventJointEntity(
-            toMovedStagePivotEventObject(entity, startLane, lane, beat, flip),
-        ),
+    stagePivotEventJoint: (onlyType, entity, lanes, beat) =>
+        toStagePivotEventJointEntity(toMovedStagePivotEventObject(entity, lanes, beat)),
     stagePivotEventConnection: undefined,
 
-    stageStyleEventJoint: (onlyType, entity, startLane, lane, beat, flip) =>
-        toStageStyleEventJointEntity(
-            toMovedStageStyleEventObject(onlyType, entity, startLane, lane, beat, flip),
-        ),
+    stageStyleEventJoint: (onlyType, entity, lanes, beat) =>
+        toStageStyleEventJointEntity(toMovedStageStyleEventObject(onlyType, entity, lanes, beat)),
     stageStyleEventConnection: undefined,
 
-    stageTransformEventJoint: (onlyType, entity, startLane, lane, beat, flip) =>
-        toStageTransformEventJointEntity(
-            toMovedStageTransformEventObject(entity, startLane, lane, beat, flip),
-        ),
+    stageTransformEventJoint: (onlyType, entity, lanes, beat) =>
+        toStageTransformEventJointEntity(toMovedStageTransformEventObject(entity, lanes, beat)),
     stageTransformEventConnection: undefined,
 
-    note: (onlyType, entity, startLane, lane, beat, flip) =>
-        toNoteEntity(entity.slideId, toMovedNoteObject(entity, startLane, lane, beat, flip)),
+    note: (onlyType, entity, lanes, beat) =>
+        toNoteEntity(entity.slideId, toMovedNoteObject(entity, lanes, beat)),
     connector: undefined,
 }
 
@@ -1386,10 +1401,8 @@ type Paste<T extends Entity> = (
     transaction: Transaction,
     onlyType: EntityType | undefined,
     entity: T,
-    startLane: number,
-    lane: number,
+    lanes: PasteLanes,
     beat: number,
-    flip: boolean,
     /** Objects already placed by this paste; they never replace each other. */
     batch: readonly Entity[],
     displaced?: Entity[],
@@ -1398,15 +1411,15 @@ type Paste<T extends Entity> = (
 const pastes: {
     [T in Entity as T['type']]: Paste<T> | undefined
 } = {
-    bpm: (transaction, onlyType, entity, startLane, lane, beat, flip, batch, displaced) => {
+    bpm: (transaction, onlyType, entity, lanes, beat, batch, displaced) => {
         const object = toMovedBpmObject(entity, beat)
         const replaced = replaceBpmsAt(transaction, object.beat, (other) => batch.includes(other))
         displaced?.push(...replaced)
 
         return addBpm(transaction, object)
     },
-    timeScale: (transaction, onlyType, entity, startLane, lane, beat, flip, batch, displaced) => {
-        const object = toMovedTimeScaleObject(onlyType, entity, startLane, lane, beat, flip)
+    timeScale: (transaction, onlyType, entity, lanes, beat, batch, displaced) => {
+        const object = toMovedTimeScaleObject(onlyType, entity, lanes, beat)
 
         // Replaces every one of its group at the beat, a pair too, but not its own batch.
         const overlaps = getInStoreGrid(transaction.store.grid, 'timeScale', object.beat) ?? []
@@ -1423,53 +1436,53 @@ const pastes: {
         return addTimeScale(transaction, object)
     },
 
-    cameraEventJoint: (transaction, onlyType, entity, startLane, lane, beat, flip) => {
+    cameraEventJoint: (transaction, onlyType, entity, lanes, beat) => {
         if (!isDynamicStages.value) return
 
-        const object = toMovedCameraEventObject(entity, startLane, lane, beat, flip)
+        const object = toMovedCameraEventObject(entity, lanes, beat)
 
         return addCameraEventJoint(transaction, object)
     },
     cameraEventConnection: undefined,
 
-    stageMaskEventJoint: (transaction, onlyType, entity, startLane, lane, beat, flip) => {
+    stageMaskEventJoint: (transaction, onlyType, entity, lanes, beat) => {
         if (!isDynamicStages.value) return
 
-        const object = toMovedStageMaskEventObject(entity, startLane, lane, beat, flip)
+        const object = toMovedStageMaskEventObject(entity, lanes, beat)
 
         return addStageMaskEventJoint(transaction, object)
     },
     stageMaskEventConnection: undefined,
 
-    stagePivotEventJoint: (transaction, onlyType, entity, startLane, lane, beat, flip) => {
+    stagePivotEventJoint: (transaction, onlyType, entity, lanes, beat) => {
         if (!isDynamicStages.value) return
 
-        const object = toMovedStagePivotEventObject(entity, startLane, lane, beat, flip)
+        const object = toMovedStagePivotEventObject(entity, lanes, beat)
 
         return addStagePivotEventJoint(transaction, object)
     },
     stagePivotEventConnection: undefined,
 
-    stageStyleEventJoint: (transaction, onlyType, entity, startLane, lane, beat, flip) => {
+    stageStyleEventJoint: (transaction, onlyType, entity, lanes, beat) => {
         if (!isDynamicStages.value) return
 
-        const object = toMovedStageStyleEventObject(onlyType, entity, startLane, lane, beat, flip)
+        const object = toMovedStageStyleEventObject(onlyType, entity, lanes, beat)
 
         return addStageStyleEventJoint(transaction, object)
     },
     stageStyleEventConnection: undefined,
 
-    stageTransformEventJoint: (transaction, onlyType, entity, startLane, lane, beat, flip) => {
+    stageTransformEventJoint: (transaction, onlyType, entity, lanes, beat) => {
         if (!isDynamicStages.value) return
 
-        const object = toMovedStageTransformEventObject(entity, startLane, lane, beat, flip)
+        const object = toMovedStageTransformEventObject(entity, lanes, beat)
 
         return addStageTransformEventJoint(transaction, object)
     },
     stageTransformEventConnection: undefined,
 
-    note: (transaction, onlyType, entity, startLane, lane, beat, flip) => {
-        const object = toMovedNoteObject(entity, startLane, lane, beat, flip)
+    note: (transaction, onlyType, entity, lanes, beat) => {
+        const object = toMovedNoteObject(entity, lanes, beat)
 
         return addNote(transaction, entity.slideId, object)
     },

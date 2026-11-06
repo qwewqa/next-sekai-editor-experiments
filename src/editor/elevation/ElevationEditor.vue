@@ -84,7 +84,13 @@ import type { Modifiers } from '../controls/gestures/pointer'
 import { isDragging, notifyPaneMoved } from '../controls/gestures/recognizers/drag'
 import { editorNavigation, type EditorNavigation } from '../navigation'
 import { closeContextMenu, contextMenu } from '../contextMenu'
-import { constrainLaneObject, minimumNoteSize } from '../laneLimits'
+import {
+    constrainLaneObject,
+    getLaneShifts,
+    limitLaneShift,
+    minimumNoteSize,
+    type LaneShifts,
+} from '../laneLimits'
 import { isSidebarVisible, revealPropertiesSection } from '../sidebars'
 import { panelTools, tools, toolName, type Tool } from '../tools'
 import { applyBrushToEntities } from '../tools/brush'
@@ -595,6 +601,10 @@ let drag:
           // The grabbed side: every resized note keeps its left edge.
           fixedLeft: boolean
           movingEdge: number
+          // A move's lane shifts the lane limit allows its notes as one group, and the note, if
+          // only one, that it also fits alone.
+          shifts?: LaneShifts
+          lone?: NoteEntity
           // Raw pointer lane delta, and each resized note's result.
           shift: number
           resized: string
@@ -724,11 +734,9 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
         },
         {
             // A resize clamps on any pointer movement, as the chart's does.
-            enabled:
-                note === active.row.note &&
-                (active.resizing
-                    ? active.shift !== 0
-                    : active.deltaLane !== 0 || active.deltaElevation !== 0),
+            enabled: active.resizing
+                ? note === active.row.note && active.shift !== 0
+                : note === active.lone && (active.deltaLane !== 0 || active.deltaElevation !== 0),
             resizing: active.resizing,
         },
     )
@@ -1128,6 +1136,15 @@ const controls: Pick<
             origin: getElevationStageProps(row.note.stageId, elevationBeat.value).gridOffset,
             composed: !!getComposedLayout(state.value),
         }
+        // As the chart's, the notes whose lanes move shift as one group; an attached row moves
+        // only elevations.
+        if (!drag.resizing && !row.attached) {
+            const lanes = drag.targets.filter(
+                (note) => getNoteFieldsIn(state.value.store, note).left,
+            )
+            drag.shifts = getLaneShifts(lanes.map((note) => [note.left, note.left + note.size]))
+            drag.lone = lanes.length === 1 ? lanes[0] : undefined
+        }
         if (row.attached) {
             const info = state.value.store.slides.info
                 .get(row.note.slideId)
@@ -1242,7 +1259,7 @@ const controls: Pick<
             return
         }
         if (!drag) return
-        const deltaLane = drag.attachment
+        const pointerDelta = drag.attachment
             ? 0
             : offset(
                   drag.lane,
@@ -1265,6 +1282,10 @@ const controls: Pick<
                       drag.deltaElevation,
                   )
             : displayedDelta
+        const deltaLane =
+            pointerDelta !== 0 || deltaElevation !== 0
+                ? limitLaneShift(pointerDelta, drag.shifts)
+                : pointerDelta
         // Resized notes can snap on their own, so their results key the preview.
         const next = {
             ...drag,

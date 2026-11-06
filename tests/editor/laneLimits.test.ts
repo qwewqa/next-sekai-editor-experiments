@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { migrateToolbar } from '../../src/editor/toolbar/migrate'
-import { constrainLaneObject } from '../../src/state/operations/laneLimits'
+import {
+    constrainLaneObject,
+    laneShiftRange,
+    laneSpanOf,
+} from '../../src/state/operations/laneLimits'
 
 test('unlimited and already-contained objects preserve identity and unrelated properties', () => {
     const note = { left: 4, size: 2, beat: 3, elevation: 5 }
@@ -116,6 +120,69 @@ test('a resize cut at the limit keeps its fixed edge exact', () => {
 
 test('a resize past both limits moves an edge already past the left limit in', () => {
     assert.deepEqual(constrainLaneObject({ left: -8, size: 17 }, 6, true), { left: -6, size: 12 })
+})
+
+test('a group shifts as one until its first edge reaches the limit', () => {
+    // Notes of different widths: the wider one's right edge stops the group.
+    assert.deepEqual(
+        laneShiftRange(
+            [
+                [-2, -1],
+                [1, 4],
+            ],
+            6,
+        ),
+        [-4, 2],
+    )
+    // A slide's nodes at different lanes.
+    assert.deepEqual(
+        laneShiftRange(
+            [
+                [-1, 0],
+                [2, 3],
+                [4, 5],
+            ],
+            6,
+        ),
+        [-5, 1],
+    )
+    assert.equal(laneShiftRange([[0, 2]], 0), undefined)
+    assert.equal(laneShiftRange([], 6), undefined)
+})
+
+test('a group past the limit shifts back in whole, and one wider than the range keeps covering it', () => {
+    // From 0 to 7: any shift lands it within -6 to 6, at most one lane left of where it is.
+    assert.deepEqual(
+        laneShiftRange(
+            [
+                [0, 2],
+                [5, 7],
+            ],
+            6,
+        ),
+        [-6, -1],
+    )
+    // From -8 to 8: it moves only while it still covers -6 to 6.
+    assert.deepEqual(
+        laneShiftRange(
+            [
+                [-8, -7],
+                [7, 8],
+            ],
+            6,
+        ),
+        [-2, 2],
+    )
+})
+
+test('a span is the lane axis an object moves on', () => {
+    assert.deepEqual(laneSpanOf({ left: 1, size: 2 }), [1, 3])
+    assert.deepEqual(laneSpanOf({ cameraLeft: -3, cameraSize: 6 }), [-3, 3])
+    assert.deepEqual(laneSpanOf({ maskLeft: 0, maskSize: 1 }), [0, 1])
+    assert.deepEqual(laneSpanOf({ pivotLane: 2 }), [2, 2])
+    assert.deepEqual(laneSpanOf({ xTranslation: -1 }), [-1, -1])
+    assert.deepEqual(laneSpanOf({ editorLane: 4 }), [4, 4])
+    assert.equal(laneSpanOf({ beat: 1, bpm: 120 }), undefined)
 })
 
 test('former default toolbar moves elevation to transforms and inserts lane limits after divisions', () => {

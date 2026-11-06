@@ -262,7 +262,8 @@ for (const direction of [-1, 1]) {
             }
             return results
         }, direction)
-        const expected = { note: direction < 0 ? 3 : 4, pivot: 4 + direction }
+        // The note, its right edge at the limit, holds the pivot back with it.
+        const expected = direction < 0 ? { note: 3, pivot: 3 } : { note: 4, pivot: 4 }
         expect(result[0]!.after).toEqual(expected)
         expect(result[1]!.after).toEqual(expected)
         expect(result[1]!.preview).toEqual(expected)
