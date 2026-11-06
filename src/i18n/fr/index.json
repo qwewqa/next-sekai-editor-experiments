@@ -2065,7 +2065,7 @@
         "label": "Taille"
       },
       "skip": {
-        "label": "Saut (temps)"
+        "label": "Saut (temps)"
       },
       "stage": {
         "label": "Scène"
@@ -2099,7 +2099,7 @@
         "label": "Décalage Y"
       },
       "yOffsetBeat": {
-        "label": "Décalage Y (temps)"
+        "label": "Décalage Y (temps)"
       },
       "noteStyle": {
         "label": "Couleur des notes",
