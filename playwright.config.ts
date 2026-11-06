@@ -55,28 +55,8 @@ const ciExclusions: CiExclusion[] = [
         reason: 'CI layout or timing; passes locally; see run 40449897065',
     },
     {
-        spec: 'toolbarPressed.spec.ts',
-        title: 'a resize leaves a hand-scrolled value flyout alone',
-        reason: 'CI layout or timing; passes locally; see run 40449897065',
-    },
-    {
         spec: 'timeLineLabels.spec.ts',
         title: 'the hover line draws as many dashes at a length',
-        reason: 'CI layout or timing; passes locally; see run 40449897065',
-    },
-    {
-        spec: 'elevationHoverInvalidation.spec.ts',
-        title: 'main-canvas overlap changes redraw all hover highlights',
-        reason: 'CI layout or timing; passes locally; see run 40449897065',
-    },
-    {
-        spec: 'elevationParity.spec.ts',
-        title: 'a Paste touch drag reads the clipboard as it presses',
-        reason: 'CI layout or timing; passes locally; see run 40449897065',
-    },
-    {
-        spec: 'touch.spec.ts',
-        title: 'a tap shows the marker at the cursor it placed',
         reason: 'CI layout or timing; passes locally; see run 40449897065',
     },
     {
@@ -95,11 +75,6 @@ const ciExclusions: CiExclusion[] = [
         spec: 'historyThemes.spec.ts',
         title: 'a root size change with History open and peeking',
         reason: 'a storage write fails on the runner (StoragePausedError on both attempts); the underlying error is not known',
-    },
-    {
-        spec: 'levelInfo.spec.ts',
-        title: 'Make from BGM. and Edit in Cover Editor',
-        reason: 'Generate in the Cover Editor does not finish within 15 s on the runner; whether it is slow or has failed is not known',
     },
 ]
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
