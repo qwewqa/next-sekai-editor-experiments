@@ -65,6 +65,11 @@ const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
     image('band', { color, light, alpha, w: bandWidth, inner: bandWidth - 2 }, { stretch: true })
 // A connector at rest and held, in the base set's colours: [rest, held].
 const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
+// A damage connector: the base's colours mixed further towards black, as the damage notes are.
+// Black's is left as it is, already as dark as the stage.
+const damageConnectorDarken = 0.25
+const damageBands = (colors) =>
+    bands(colors.map((color) => mix(color, '#000000', damageConnectorDarken)))
 // Slot glows in the base set's glow colours: [at the note, middle, top], up to a height of the cell.
 const glow = ([light, color, top], height = 1) =>
     image(
@@ -721,7 +726,7 @@ export function skinSprites() {
                 `Sekai ${family} Active Slide Connection Active`,
             )
         }
-        const [rest, held] = bands(baseColors.connector.damage)
+        const [rest, held] = damageBands(baseColors.connector.damage)
         add('Sekai Damage Slide Connection', rest)
         add('Sekai Damage Slide Connection Active', held)
     })
@@ -886,7 +891,8 @@ export function skinSprites() {
                 add(`Sekai ${family} Active Slide Connection Normal ${color}`, bandRest)
                 add(`Sekai ${family} Active Slide Connection Active ${color}`, bandHeld)
             }
-            const [damageRest, damageHeld] = bands([damaged, damaged])
+            const damageOf = color === 'Black' ? bands : damageBands
+            const [damageRest, damageHeld] = damageOf([damaged, damaged])
             add(`Sekai Damage Slide Connection ${color}`, damageRest)
             add(`Sekai Damage Slide Connection Active ${color}`, damageHeld)
         }
