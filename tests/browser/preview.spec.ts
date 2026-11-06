@@ -1045,6 +1045,14 @@ test.describe('preview transport', () => {
         expect(await cursor(page)).toBe(paused)
 
         await page.getByRole('button', { name: 'Play Preview', exact: true }).click()
+        // Play stops if the audio clock has not moved by its start deadline, a timer on the
+        // simulated clock. Let the audio start before skipping past it.
+        await expect
+            .poll(async () => {
+                await page.clock.runFor(32)
+                return cursor(page)
+            })
+            .toBeGreaterThan(paused)
         // These waits check elapsed-time visibility, not intermediate animation
         // frames. Skip frame-by-frame GPU work so slower CI runners stay bounded.
         await page.clock.fastForward(3500)
