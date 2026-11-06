@@ -32,7 +32,7 @@ import {
 import { translateSelectionWithReceipt } from '../../../state/operations/translateSelection'
 import { getInStoreGrid } from '../../../state/store/grid'
 import { clamp } from '../../../utils/math'
-import { constrainLaneObject } from '../../laneLimits'
+import { constrainLaneObject, getLaneShifts, limitLaneShift } from '../../laneLimits'
 import { notify } from '../../notification'
 import { toolName } from '../../tools/state'
 import { toMovedBeat, view } from '../../view'
@@ -459,19 +459,24 @@ export const updateScalingDrag = (value: number) => {
             delta =
                 clamp(active.entityValue + delta, -settings.maxLane, settings.maxLane) -
                 active.entityValue
-        } else if (active.attached) {
-            const constrained = constrainLaneObject({
-                left: active.bounds.min + delta,
-                size: active.bounds.max - active.bounds.min,
-            })
-            delta = constrained.left - active.bounds.min
+        } else {
+            // A drag away from the ends moves the selection as one, as Select's moves do.
+            const { min, max } = extrema(source, axis)
+            const spans: (readonly [number, number])[] = min <= max ? [[min, max]] : []
+            if (active.attached) spans.push([active.bounds.min, active.bounds.max])
+            delta = limitLaneShift(delta, getLaneShifts(spans))
         }
     }
     const effectiveValue = active.value + delta
     if (active.lastValue === effectiveValue) return true
     const recorder = createDraftRecorder(session)
     const constrainDraft = (result: State) => {
-        if (!(settings.maxLane > 0) || active.attached) return result
+        if (
+            !(settings.maxLane > 0) ||
+            active.attached ||
+            (!active.endpoint && getScaleEntities(selected, axis, source).length > 1)
+        )
+            return result
         const focus = recorder.get(result)?.live.get(active.baseline)
         if (!focus || !isEditableEntity(focus)) return result
         const constrained = constrainLaneObject(focus, {

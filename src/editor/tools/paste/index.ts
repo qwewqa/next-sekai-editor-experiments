@@ -49,7 +49,7 @@ import {
     type StageTransformEventJointEntity,
 } from '../../../state/entities/events/joints/stage/transform.ts'
 import { createSlideId, type SlideId } from '../../../state/entities/slides'
-import { toNoteEntity, type NoteEntity } from '../../../state/entities/slides/note'
+import { slideEnds, toNoteEntity, type NoteEntity } from '../../../state/entities/slides/note'
 import { toTimeScaleEntity, type TimeScaleEntity } from '../../../state/entities/timeScale'
 import { calculateBpms, toBpmIntegral, type BpmIntegral } from '../../../state/integrals/bpms'
 import { snapBeat } from '../../../state/integrals/grid'
@@ -650,11 +650,11 @@ export type PasteLanes = {
     start: number
     shift: number
     flip: boolean
-    // Whether one object's lane moves, which the lane limit also fits alone.
-    lone: boolean
+    // The object, if only one, whose lane moves, which the lane limit also fits alone.
+    lone?: Entity
 }
 
-const unmovedLanes: PasteLanes = { start: 0, shift: 0, flip: false, lone: false }
+const unmovedLanes: PasteLanes = { start: 0, shift: 0, flip: false }
 
 /** A pasted lane; a span flips about its other edge. */
 const pastedLane = ({ start, shift, flip }: PasteLanes, value: number, size = 0) =>
@@ -668,7 +668,23 @@ export const toPasteLanes = (
     shift: number,
     flip: boolean,
 ): PasteLanes => {
-    const moving = entities.filter((entity) => movesLane(onlyType, entity))
+    // A pasted slide's ends are its first and last notes.
+    const slides = new Map<SlideId, NoteEntity[]>()
+    for (const entity of entities) {
+        if (entity.type !== 'note') continue
+        const slide = slides.get(entity.slideId)
+        if (slide) slide.push(entity)
+        else slides.set(entity.slideId, [entity])
+    }
+    const ends = new Set(
+        [...slides.values()].flatMap((notes) => {
+            const { first, last } = slideEnds(notes)
+            return [first, last]
+        }),
+    )
+    const moving = entities.filter((entity) =>
+        movesLane(onlyType, entity, (note) => ends.has(note)),
+    )
     const spans = moving.flatMap((entity) => {
         const span = laneSpanOf(entity)
         if (!span) return []
@@ -678,7 +694,7 @@ export const toPasteLanes = (
         start,
         shift: limitLaneShift(shift, getLaneShifts(spans)),
         flip,
-        lone: moving.length === 1,
+        lone: moving.length === 1 ? moving[0] : undefined,
     }
 }
 
@@ -973,7 +989,7 @@ const pasteAuthored = (
         const stageId =
             'stageId' in entity ? (view.stageId ?? entity.stageId) : defaultStageId.value
         const limit = <T extends Parameters<typeof constrainLaneObject>[0]>(object: T) =>
-            constrainLaneObject(object, { enabled: limited && lanes.lone })
+            constrainLaneObject(object, { enabled: limited && entity === lanes.lone })
         let added: Entity[] | undefined
         switch (entity.type) {
             case 'bpm':
@@ -1240,7 +1256,7 @@ const toMovedTimeScaleObject = (
             editorLane:
                 onlyType === 'timeScale' ? pastedLane(lanes, entity.editorLane) : entity.editorLane,
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 const toMovedCameraEventObject = (
@@ -1258,7 +1274,7 @@ const toMovedCameraEventObject = (
                 : entity.cameraZoomTargetLane,
             cameraRotation: lanes.flip ? -entity.cameraRotation : entity.cameraRotation,
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 const toMovedStageMaskEventObject = (
@@ -1273,7 +1289,7 @@ const toMovedStageMaskEventObject = (
             beat,
             maskLeft: pastedLane(lanes, entity.maskLeft, entity.maskSize),
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 const toMovedStagePivotEventObject = (
@@ -1288,7 +1304,7 @@ const toMovedStagePivotEventObject = (
             beat,
             pivotLane: pastedLane(lanes, entity.pivotLane),
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 const toMovedStageStyleEventObject = (
@@ -1309,7 +1325,7 @@ const toMovedStageStyleEventObject = (
             leftBorderStyle: lanes.flip ? entity.rightBorderStyle : entity.leftBorderStyle,
             rightBorderStyle: lanes.flip ? entity.leftBorderStyle : entity.rightBorderStyle,
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 const toMovedStageTransformEventObject = (
@@ -1326,7 +1342,7 @@ const toMovedStageTransformEventObject = (
             centerXOffset: lanes.flip ? -entity.centerXOffset : entity.centerXOffset,
             xTranslation: pastedLane(lanes, entity.xTranslation),
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 const flippedFlickDirections: Record<FlickDirection, FlickDirection> = {
@@ -1355,7 +1371,7 @@ export const toMovedNoteObject = (
                 ? flippedFlickDirections[entity.flickDirection]
                 : entity.flickDirection,
         },
-        { enabled: lanes.lone },
+        { enabled: entity === lanes.lone },
     )
 
 type Create<T extends Entity> = (

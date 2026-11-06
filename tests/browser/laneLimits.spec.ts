@@ -296,6 +296,38 @@ test('a selection drag by an attached tick keeps the shape of its slide at the l
     ])
 })
 
+test('an attached tick left at the end of its slide is held to the limit, alone or with others', async ({
+    page,
+}) => {
+    // The tick was attached before the slide's tail went; its lane is its own now.
+    const slide = [
+        { beat: 2, left: 0, size: 2 },
+        { beat: 4, left: 3, size: 2, isAttached: true },
+    ]
+    await seedSlides(page, [slide])
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: history.state.value.selectedEntities.filter(
+                (entity) => entity.beat === 4,
+            ),
+        })
+    })
+    await page.keyboard.press('f')
+    expect(await dragChart(page, [4, 4], [14, 4])).toEqual([{ beat: 4, left: 4, size: 2 }])
+    expect(await placed(page)).toEqual([
+        { beat: 2, left: 0, size: 2 },
+        { beat: 4, left: 4, size: 2 },
+    ])
+    await seedSlides(page, [slide])
+    await dragChart(page, [4, 4], [14, 4])
+    expect(await placed(page)).toEqual([
+        { beat: 2, left: 1, size: 2 },
+        { beat: 4, left: 4, size: 2 },
+    ])
+})
+
 test('a selection drag moves notes and events as one group', async ({ page }) => {
     const moved = await page.evaluate(async () => {
         const { show, fixtures, history, store, settings, appImport } = window.editorTest
@@ -533,6 +565,97 @@ test('a pasted group keeps its shape against the limit', async ({ page }) => {
     ).toEqual(ghost)
 })
 
+test('a paste leaves a time scale lane it does not move, in Basic and Composed, with one note or two', async ({
+    page,
+}) => {
+    const lanes = await page.evaluate(async () => {
+        const { show, fixtures, history, store, settings, view, appImport } = window.editorTest
+        const { clipboardEntry } =
+            await appImport<typeof import('../../src/clipboard')>('/src/clipboard/index.ts')
+        const { commands } = await appImport<typeof import('../../src/editor/commands')>(
+            '/src/editor/commands/index.ts',
+        )
+        const paste = await appImport<typeof import('../../src/editor/tools/paste')>(
+            '/src/editor/tools/paste/index.ts',
+        )
+        const note = fixtures.interaction.slides[0]![0]!
+        const timeScale = fixtures.events.timeScales[0]!
+        const results = []
+        for (const [layout, count] of [
+            ['basic', 1],
+            ['composed', 1],
+            ['basic', 2],
+            ['composed', 2],
+        ] as const) {
+            show({
+                ...fixtures.events,
+                isDynamicStages: true,
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stagePivotEvents: [],
+                stageStyleEvents: [],
+                stageTransformEvents: [],
+                timeScales: [{ ...timeScale, beat: 4, editorLane: 9 }],
+                slides: [
+                    [{ ...note, beat: 4, left: 0, size: 2 }],
+                    ...(count === 2 ? [[{ ...note, beat: 6, left: 2, size: 2 }]] : []),
+                ],
+            })
+            settings.maxLane = 6
+            view.layout = layout
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: [...store.getAllEntities()].filter(
+                    (entity) => entity.type === 'note' || entity.type === 'timeScale',
+                ),
+            })
+            await commands.copy.execute()
+            const lane = clipboardEntry.value!.data!.lane
+            await paste.pasteAtPosition(lane + 1, 8, { ctrl: false, shift: false } as never, {
+                composed: true,
+            })
+            const pasted = history.state.value.selectedEntities.find(
+                (entity) => entity.type === 'timeScale',
+            )
+            results.push(pasted?.type === 'timeScale' ? pasted.editorLane : undefined)
+        }
+        return results
+    })
+    expect(lanes).toEqual([9, 9, 9, 9])
+})
+
+test('an Elevation Editor paste keeps the shape of a group against the limit', async ({ page }) => {
+    await seedSlides(page, [[{ beat: 4, left: -2, size: 1 }], [{ beat: 4, left: 1, size: 3 }]])
+    await page.keyboard.press('c')
+    await page.evaluate(async () => {
+        const { appImport, nextTick } = window.editorTest
+        window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        openElevationEditor(8)
+        await nextTick()
+    })
+    await expect(page.locator('.elevation-canvas')).toBeVisible()
+    await page.keyboard.press('v')
+    await settle(page)
+    const target = await elevationPoint(page, 9, 1)
+    await page.mouse.move(target.x - 2, target.y)
+    await page.mouse.move(target.x, target.y)
+    await page.mouse.click(target.x, target.y)
+    await expect
+        .poll(async () =>
+            (await placed(page))
+                .filter(({ beat }) => beat === 8)
+                .map(({ left, size }) => ({ left, size }))
+                .sort((a, b) => a.left - b.left),
+        )
+        .toEqual([
+            { left: 0, size: 1 },
+            { left: 3, size: 3 },
+        ])
+})
+
 test('elevation placement and selection movement honor limits in preview and on commit', async ({
     page,
 }) => {
@@ -565,7 +688,7 @@ test('elevation placement and selection movement honor limits in preview and on 
     expect((await notes(page))[0]!.left).toBe(ghost!.left)
 })
 
-test('width scaling clamps the dragged edge, preserves cancellation and permits other selected notes outside', async ({
+test('width scaling moves a group as one, clamps the dragged edge, preserves cancellation and permits other selected notes outside', async ({
     page,
 }) => {
     await seed(page, true)
@@ -581,9 +704,10 @@ test('width scaling clamps the dragged edge, preserves cancellation and permits 
             .selectedEntities.filter((entity) => entity.type === 'note')
             .map(({ left, size }) => ({ left, size }))
     })
+    // A drag of the middle moves the group as one, as Select does: from 0 to 7, it comes back in.
     expect(draft).toEqual([
+        { left: -1, size: 2 },
         { left: 4, size: 2 },
-        { left: 13, size: 2 },
     ])
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     expect((await notes(page)).map(({ left }) => left)).toEqual([0, 5])

@@ -86,7 +86,7 @@ export const laneSpanOf = (object: EditableObject): readonly [number, number] | 
 }
 
 /**
- * The lane shifts that keep a group of spans within ±maxLane as one: from where its left edge
+ * The lane shifts that keep a group of spans within -maxLane to maxLane as one: from where its left edge
  * reaches the limit to where its right edge does. A group past the limit can only shift back in,
  * and one wider than the range only while it covers the range. Undefined without a limit or spans.
  */

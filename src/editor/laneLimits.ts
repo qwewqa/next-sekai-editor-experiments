@@ -1,6 +1,7 @@
 import type { NoteType } from '../chart/note'
 import { settings } from '../settings'
 import type { Entity, EntityType } from '../state/entities'
+import type { NoteEntity } from '../state/entities/slides/note'
 import type { EditableObject } from '../state/operations/editable'
 import { constrainLaneObject as constrain, laneShiftRange } from '../state/operations/laneLimits'
 import { clamp } from '../utils/math'
@@ -39,13 +40,17 @@ export const limitLaneShift = (shift: number, shifts: LaneShifts | undefined) =>
     shifts ? clamp(shift, shifts[0], shifts[1]) : shift
 
 /**
- * Whether moving a selection shifts an object's lane: an attached tick follows its slide, and
- * editor lanes move only in a selection of their own type.
+ * Whether moving a selection shifts an object's lane: an attached tick within its slide follows
+ * the slide, and editor lanes move only in a selection of their own type.
  */
-export const movesLane = (onlyType: EntityType | undefined, entity: Entity) => {
+export const movesLane = (
+    onlyType: EntityType | undefined,
+    entity: Entity,
+    isSlideEnd: (note: NoteEntity) => boolean,
+) => {
     switch (entity.type) {
         case 'note':
-            return !entity.isAttached
+            return !entity.isAttached || isSlideEnd(entity)
         case 'timeScale':
         case 'stageStyleEventJoint':
             return onlyType === entity.type

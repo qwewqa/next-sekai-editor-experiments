@@ -958,12 +958,19 @@ const toPointerMove = (active: MoveActive, x: number, y: number) => ({
 })
 
 export const planMove = (source: State, active: MoveActive, lane: number, beatOffset: number) => {
-    const plan = withLaneLimit(active, getMovePlan(source, active, beatOffset), lane, beatOffset)
+    const plan = withLaneLimit(
+        source,
+        active,
+        getMovePlan(source, active, beatOffset),
+        lane,
+        beatOffset,
+    )
     return { plan, rawMove: getRawMove(source, active, lane, beatOffset, plan) }
 }
 
 /** The lane limit holds a move, once it changes a lane or beat, with its objects as one group. */
 const withLaneLimit = (
+    source: State,
     active: MoveActive,
     plan: MovePlan,
     lane: number,
@@ -971,9 +978,15 @@ const withLaneLimit = (
 ): MovePlan => {
     if (!(settings.maxLane > 0) || (lane === active.lane && plan.beat === active.focus.beat))
         return plan
+    const isSlideEnd = (note: NoteEntity) => {
+        const infos = source.store.slides.info.get(note.slideId)
+        return infos?.[0]?.note === note || infos?.at(-1)?.note === note
+    }
     if (isSelectResize(active.onlyType, active.focus, active.lane)) {
         // One resized object keeps its own limit.
-        const resized = active.entities.filter((entity) => movesLane(active.onlyType, entity))
+        const resized = active.entities.filter((entity) =>
+            movesLane(active.onlyType, entity, isSlideEnd),
+        )
         const focus = laneSpanOf(active.focus)
         if (resized.length < 2 || !focus) return plan
         const fixedLeft = active.lane >= (focus[0] + focus[1]) / 2
@@ -989,7 +1002,7 @@ const withLaneLimit = (
             !isPinned(entity, beatOffset) &&
             // A tick taken past its slide's end moves as a note.
             ((entity.type === 'note' && plan.bases.has(entity)) ||
-                movesLane(active.onlyType, entity)),
+                movesLane(active.onlyType, entity, isSlideEnd)),
     )
     const spans = moving.flatMap((entity) => {
         const span = laneSpanOf(
