@@ -3,7 +3,11 @@ import { settings } from '../settings'
 import type { Entity, EntityType } from '../state/entities'
 import type { NoteEntity } from '../state/entities/slides/note'
 import type { EditableObject } from '../state/operations/editable'
-import { constrainLaneObject as constrain, laneShiftRange } from '../state/operations/laneLimits'
+import {
+    constrainLaneObject as constrain,
+    edgeShiftRange,
+    laneShiftRange,
+} from '../state/operations/laneLimits'
 import { clamp } from '../utils/math'
 import { view } from './view'
 
@@ -34,6 +38,13 @@ export type LaneShifts = readonly [min: number, max: number]
  */
 export const getLaneShifts = (spans: Iterable<readonly [number, number]>): LaneShifts | undefined =>
     laneShiftRange(spans, settings.maxLane)
+
+/**
+ * The shifts the lane limit allows the moving edges of a resize of several objects: none goes
+ * further past the limit than it is.
+ */
+export const getEdgeShifts = (edges: Iterable<number>): LaneShifts | undefined =>
+    edgeShiftRange(edges, settings.maxLane)
 
 /** A group's lane shift, held to the lane limit. */
 export const limitLaneShift = (shift: number, shifts: LaneShifts | undefined) =>

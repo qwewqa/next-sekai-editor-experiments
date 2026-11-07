@@ -86,6 +86,27 @@ export const laneSpanOf = (object: EditableObject): readonly [number, number] | 
 }
 
 /**
+ * The shifts that move a group of edges together without taking any further past -maxLane to
+ * maxLane: an edge within the range stays within it, and one past it can only come back in.
+ * Undefined without a limit or edges.
+ */
+export const edgeShiftRange = (
+    edges: Iterable<number>,
+    maxLane: number,
+): readonly [number, number] | undefined => {
+    if (!(maxLane > 0) || !Number.isFinite(maxLane)) return
+    let min = -Infinity
+    let max = Infinity
+    let any = false
+    for (const edge of edges) {
+        any = true
+        min = Math.max(min, Math.min(0, -maxLane - edge))
+        max = Math.min(max, Math.max(0, maxLane - edge))
+    }
+    return any ? [min, max] : undefined
+}
+
+/**
  * The lane shifts that keep a group of spans within -maxLane to maxLane as one: from where its left edge
  * reaches the limit to where its right edge does. A group past the limit can only shift back in,
  * and one wider than the range only while it covers the range. Undefined without a limit or spans.

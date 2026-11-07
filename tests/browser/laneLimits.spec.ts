@@ -493,6 +493,77 @@ test('a selection resize keeps minimum widths while another edge goes on to the 
     ])
 })
 
+test('a stopped selection resize keeps each note on its side as the pointer goes on', async ({
+    page,
+}) => {
+    await seedSlides(page, [[{ beat: 4, left: 0, size: 2 }], [{ beat: 8, left: -6, size: 1 }]])
+    await page.evaluate(() => {
+        window.editorTest.view.laneDivision = 1
+    })
+    await page.keyboard.press('f')
+    // The second note's right edge stops the shift after one lane; the pointer crosses the first
+    // note's left edge, and the shifted edge does not.
+    expect(await dragChart(page, [1.95, 4], [-8, 4])).toEqual([
+        { beat: 4, left: 0, size: 1 },
+        { beat: 8, left: -6, size: 1 },
+    ])
+})
+
+test('a selection resize leaves edges already past the limit there, and lets them move in gradually', async ({
+    page,
+}) => {
+    const resized = await page.evaluate(async () => {
+        const { show, fixtures, history, store, settings, view, appImport } = window.editorTest
+        const select = await appImport<typeof import('../../src/editor/tools/select')>(
+            '/src/editor/tools/select.ts',
+        )
+        const note = fixtures.interaction.slides[0]![0]!
+        const results = []
+        for (const lane of [18.95, 16.95]) {
+            show({
+                ...fixtures.interaction,
+                slides: [
+                    [{ ...note, beat: 4, left: 16, size: 2 }],
+                    [{ ...note, beat: 8, left: 17, size: 3 }],
+                ],
+            })
+            settings.maxLane = 6
+            view.laneDivision = 1
+            const source = history.state.value
+            const entities = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+            const focus = entities.find((entity) => entity.beat === 4)!
+            // The first note's right edge, 18; the second's is 20.
+            const active = {
+                type: 'move' as const,
+                lane: 17.95,
+                focus,
+                entities,
+                onlyType: 'note' as const,
+                pressBeat: focus.beat,
+            }
+            const { plan, rawMove } = select.planMove(source, active, lane, 0)
+            results.push(
+                select
+                    .moveEntities(source, active, lane, 0, plan, rawMove)
+                    .state.selectedEntities.flatMap((entity) =>
+                        entity.type === 'note' ? [{ left: entity.left, size: entity.size }] : [],
+                    ),
+            )
+        }
+        return results
+    })
+    // Out: no edge goes further past the limit.
+    expect(resized[0]).toEqual([
+        { left: 16, size: 2 },
+        { left: 17, size: 3 },
+    ])
+    // In: both edges come one lane in, as the pointer does.
+    expect(resized[1]).toEqual([
+        { left: 16, size: 1 },
+        { left: 17, size: 2 },
+    ])
+})
+
 test('a narrow custom limit keeps camera events valid and centered', async ({ page }) => {
     await seed(page)
     await page.evaluate(async () => {

@@ -86,6 +86,7 @@ import { editorNavigation, type EditorNavigation } from '../navigation'
 import { closeContextMenu, contextMenu } from '../contextMenu'
 import {
     constrainLaneObject,
+    getEdgeShifts,
     getLaneShifts,
     limitLaneShift,
     minimumNoteSize,
@@ -603,7 +604,7 @@ let drag:
           movingEdge: number
           // A move's lane shifts the lane limit allows its notes as one group, and the note, if
           // only one, that it also fits alone. A resize of several notes has the shifts of their
-          // moving edges.
+          // moving edges, as the chart's.
           shifts?: LaneShifts
           lone?: NoteEntity
           // Raw pointer lane delta, and each resized note's result.
@@ -707,25 +708,27 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
         return { elevation: note.elevation + active.deltaElevation }
     const edge = note.left + (active.fixedLeft ? note.size : 0)
     // As the chart's select resize, every edge moves by the grabbed edge's snapped shift.
+    const shift =
+        !active.resizing || active.shift === 0
+            ? 0
+            : limitLaneShift(
+                  resizeShift(
+                      active.movingEdge,
+                      active.movingEdge + active.shift,
+                      active.composed ? active.origin : 0,
+                  ),
+                  active.shifts,
+              )
     const [left, size] = active.resizing
         ? resize(
               shiftComputed(note.left, active.fixedLeft ? 0 : note.size),
-              edge + active.shift,
+              active.shifts ? edge + shift : edge + active.shift,
               minimumNoteSize(note.noteType),
               Number.POSITIVE_INFINITY,
               edge,
               [note.left, note.size],
               undefined,
-              active.shift === 0
-                  ? 0
-                  : limitLaneShift(
-                        resizeShift(
-                            active.movingEdge,
-                            active.movingEdge + active.shift,
-                            active.composed ? active.origin : 0,
-                        ),
-                        active.shifts,
-                    ),
+              shift,
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
@@ -741,7 +744,7 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
         {
             // A resize clamps on any pointer movement, as the chart's does.
             enabled: active.resizing
-                ? note === active.row.note && active.shift !== 0
+                ? note === active.row.note && !active.shifts && active.shift !== 0
                 : note === active.lone && (active.deltaLane !== 0 || active.deltaElevation !== 0),
             resizing: active.resizing,
         },
@@ -1148,11 +1151,8 @@ const controls: Pick<
         if (drag.resizing) {
             const fixedLeft = drag.fixedLeft
             if (lanes.length > 1)
-                drag.shifts = getLaneShifts(
-                    lanes.map((note) => {
-                        const edge = note.left + (fixedLeft ? note.size : 0)
-                        return [edge, edge]
-                    }),
+                drag.shifts = getEdgeShifts(
+                    lanes.map((note) => note.left + (fixedLeft ? note.size : 0)),
                 )
         } else if (!row.attached) {
             drag.shifts = getLaneShifts(lanes.map((note) => [note.left, note.left + note.size]))

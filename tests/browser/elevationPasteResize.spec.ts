@@ -453,7 +453,7 @@ test('composed: a multi-note resize moves every edge by the grabbed edge snap an
     ])
 })
 
-test('a resize nudge under a snap step clamps the grabbed note to a lowered lane limit, as on the chart', async ({
+test('a resize nudge leaves a selection past a lowered lane limit on both sides as it is, as on the chart', async ({
     page,
 }) => {
     await seed(page, { layout: 'basic', snapping: 'absolute', division: 1 })
@@ -464,8 +464,8 @@ test('a resize nudge under a snap step clamps the grabbed note to a lowered lane
     const main = await runGesture(page, 'main', nudge)
     const elevation = await runGesture(page, 'elevation', nudge)
     expect(lanes(elevation)).toEqual(lanes(main))
-    // B's clamp to the limit commits the drop; off-lattice C keeps its size.
-    expect(main).toContainEqual(expect.objectContaining({ beat: 3, stageId: 2, left: 1, size: 1 }))
+    // The selected edges lie past both limits, so none moves; B keeps its overflow.
+    expect(main).toContainEqual(expect.objectContaining({ beat: 3, stageId: 2, left: 1, size: 2 }))
     expect(main).toContainEqual(expect.objectContaining({ beat: 3, left: 4.3, size: 2 }))
 })
 

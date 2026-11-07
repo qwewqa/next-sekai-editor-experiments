@@ -89,6 +89,7 @@ import {
 import type { Modifiers } from '../controls/gestures/pointer'
 import {
     constrainLaneObject,
+    getEdgeShifts,
     getLaneShifts,
     limitLaneShift,
     minimumNoteSize,
@@ -171,7 +172,8 @@ export type MovePlan = {
     latticeMoved: boolean
     // Once the move changes a lane or beat: the lane shifts the lane limit allows the objects whose
     // lanes move, as one group, and the object, if only one, that it also fits alone. A resize of
-    // several objects has the shifts of their moving edges.
+    // several objects has the shifts of their moving edges, which then take their sides from
+    // where the shift puts them, and none is fitted alone.
     shifts?: LaneShifts
     lone?: Entity
 }
@@ -991,11 +993,10 @@ const withLaneLimit = (
         if (resized.length < 2 || !focus) return plan
         const fixedLeft = active.lane >= (focus[0] + focus[1]) / 2
         const edges = resized.flatMap((entity) => {
-            const span = laneSpanOf(entity)
-            const edge = span?.[fixedLeft ? 1 : 0]
-            return edge === undefined ? [] : [[edge, edge] as const]
+            const edge = laneSpanOf(entity)?.[fixedLeft ? 1 : 0]
+            return edge === undefined ? [] : [edge]
         })
-        return { ...plan, shifts: getLaneShifts(edges) }
+        return { ...plan, shifts: getEdgeShifts(edges) }
     }
     const moving = active.entities.filter(
         (entity) =>
@@ -1088,15 +1089,19 @@ const toMovedCameraEventObject = (
         const edge = entity.cameraLeft + (fixedLeft ? entity.cameraSize : 0)
         const focusEdge = focus.cameraLeft + (fixedLeft ? focus.cameraSize : 0)
         // Every range's edge moves by the grabbed edge's snapped shift, as notes do.
+        const shift = limitLaneShift(
+            resizeShift(focusEdge, focusEdge + (lane - startLane)),
+            plan.shifts,
+        )
         const [cameraLeft, cameraSize] = resize(
             shiftComputed(entity.cameraLeft, fixedLeft ? 0 : entity.cameraSize),
-            edge + (lane - startLane),
+            plan.shifts ? edge + shift : edge + (lane - startLane),
             6,
             24,
             edge,
             [entity.cameraLeft, entity.cameraSize],
             undefined,
-            limitLaneShift(resizeShift(focusEdge, focusEdge + (lane - startLane)), plan.shifts),
+            shift,
         )
 
         return constrainLaneObject(
@@ -1109,6 +1114,7 @@ const toMovedCameraEventObject = (
                 enabled:
                     !rawMove?.unconstrained &&
                     entity === focus &&
+                    !plan.shifts &&
                     (lane !== startLane || beat !== entity.beat),
                 resizing: true,
             },
@@ -1146,15 +1152,19 @@ const toMovedStageMaskEventObject = (
         const fixedLeft = startLane >= focus.maskLeft + focus.maskSize / 2
         const edge = entity.maskLeft + (fixedLeft ? entity.maskSize : 0)
         const focusEdge = focus.maskLeft + (fixedLeft ? focus.maskSize : 0)
+        const shift = limitLaneShift(
+            resizeShift(focusEdge, focusEdge + (lane - startLane)),
+            plan.shifts,
+        )
         const [maskLeft, maskSize] = resize(
             shiftComputed(entity.maskLeft, fixedLeft ? 0 : entity.maskSize),
-            edge + (lane - startLane),
+            plan.shifts ? edge + shift : edge + (lane - startLane),
             0,
             Number.POSITIVE_INFINITY,
             edge,
             [entity.maskLeft, entity.maskSize],
             undefined,
-            limitLaneShift(resizeShift(focusEdge, focusEdge + (lane - startLane)), plan.shifts),
+            shift,
         )
 
         return constrainLaneObject(
@@ -1167,6 +1177,7 @@ const toMovedStageMaskEventObject = (
                 enabled:
                     !rawMove?.unconstrained &&
                     entity === focus &&
+                    !plan.shifts &&
                     (lane !== startLane || beat !== entity.beat),
                 resizing: true,
             },
@@ -1304,7 +1315,7 @@ const toMovedNoteObject = (
 
         const [left, size] = resize(
             shiftComputed(entity.left, fixedLeft ? 0 : entity.size),
-            edge + (lane - startLane),
+            plan.shifts ? edge + shift : edge + (lane - startLane),
             minimumNoteSize(entity.noteType),
             Number.POSITIVE_INFINITY,
             edge,
@@ -1320,7 +1331,10 @@ const toMovedNoteObject = (
                 size,
             },
             {
-                enabled: entity === focus && (lane !== startLane || beat !== entity.beat),
+                enabled:
+                    entity === focus &&
+                    !plan.shifts &&
+                    (lane !== startLane || beat !== entity.beat),
                 resizing: true,
             },
         )

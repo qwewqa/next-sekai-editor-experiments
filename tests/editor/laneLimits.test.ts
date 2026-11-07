@@ -3,6 +3,7 @@ import test from 'node:test'
 import { migrateToolbar } from '../../src/editor/toolbar/migrate'
 import {
     constrainLaneObject,
+    edgeShiftRange,
     laneShiftRange,
     laneSpanOf,
 } from '../../src/state/operations/laneLimits'
@@ -173,6 +174,17 @@ test('a group past the limit shifts back in whole, and one wider than the range 
         ),
         [-2, 2],
     )
+})
+
+test('resized edges shift as one, none going further past the limit', () => {
+    // Within the range: the first edge to reach a limit stops them.
+    assert.deepEqual(edgeShiftRange([2, -5], 6), [-1, 4])
+    // Past it: they stay, or come in gradually.
+    assert.deepEqual(edgeShiftRange([18, 20], 6), [-24, 0])
+    // Past it on both sides: they stay.
+    assert.deepEqual(edgeShiftRange([-8, 8], 6), [0, 0])
+    assert.equal(edgeShiftRange([2], 0), undefined)
+    assert.equal(edgeShiftRange([], 6), undefined)
 })
 
 test('a span is the lane axis an object moves on', () => {
