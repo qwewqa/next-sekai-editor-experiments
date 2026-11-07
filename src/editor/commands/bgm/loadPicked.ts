@@ -7,6 +7,7 @@ import { getFilename } from '../../../utils/file'
 import { timeout } from '../../../utils/promise'
 import { createWaveform, releaseWaveform } from '../../../waveform'
 import type { PickedBgm } from '../../media/applyPick'
+import { heldOrDecoded } from '../../media/heldBgm'
 
 const FORMATS = [
     ['mp3', /mpeg|mp3/],
@@ -78,11 +79,13 @@ async function* load(
 
     yield () => i18n.value.commands.bgm.modal.decoding
 
-    const buffer = await loadBgm(data)
+    const { buffer, source } = await heldOrDecoded(captured.meta.hash, captured.source, () =>
+        loadBgm(data),
+    )
     check()
     const durationMs = durationMsOf(buffer.duration)
     const meta = { ...captured.meta, ...(durationMs === undefined ? {} : { durationMs }) }
-    if (!drawn) return { filename: getFilename(file), buffer, source: captured.source, meta }
+    if (!drawn) return { filename: getFilename(file), buffer, source, meta }
 
     yield () => i18n.value.commands.bgm.modal.generating
     await timeout(50)
@@ -99,7 +102,7 @@ async function* load(
         filename: getFilename(file),
         buffer,
         ...(waveform ? { waveform } : {}),
-        source: captured.source,
+        source,
         // Every pick records its own metadata and bytes, never the previous BGM's.
         meta,
     }

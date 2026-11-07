@@ -1,7 +1,13 @@
 import { nextTick, watch } from 'vue'
 import { recordError } from '../../diagnostics'
 import { session } from '../../history/session'
-import { isPeeking, liveState, releaseSlotAudio, replaceState } from '../../history/stack'
+import {
+    isPeeking,
+    liveState,
+    loadedStates,
+    releaseSlotAudio,
+    replaceState,
+} from '../../history/stack'
 import type { BatchMedia } from '../../local/flushWrite'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
@@ -244,6 +250,24 @@ export const cachedHeld = (hash: string) => {
         cache.set(hash, parts)
     }
     return parts
+}
+
+/**
+ * A picked file's audio and bytes, held once however often it is picked: the cache's when it holds
+ * the file's hash; else `decode`'s, with the bytes an undo slot keeps for the hash, or else the
+ * bytes captured at the pick.
+ */
+export const heldOrDecoded = async (
+    hash: string,
+    source: ArrayBuffer,
+    decode: () => Promise<AudioBuffer>,
+): Promise<{ buffer: AudioBuffer; source: ArrayBuffer }> => {
+    const held = cachedHeld(hash)
+    if (held) return { buffer: held.buffer, source: held.source }
+    const kept = loadedStates().find(
+        ({ state }) => state.bgm.meta?.hash === hash && state.bgm.source,
+    )
+    return { buffer: await decode(), source: kept?.state.bgm.source ?? source }
 }
 
 /** The parts a loaded `Bgm` holds, when it holds all of them. */

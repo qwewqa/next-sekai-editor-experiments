@@ -6,6 +6,7 @@ import { applyPick, decidePick, type PickedBgm } from '../../src/editor/media/ap
 import {
     cachedHashes,
     configureHeldBgm,
+    heldOrDecoded,
     resetHeldBgmForTests,
     settleHeldBgm,
 } from '../../src/editor/media/heldBgm'
@@ -190,4 +191,42 @@ test('undo slots keep decoded audio only while the cache holds it, and get it ba
     assert.equal(liveState.value.bgm.meta?.hash, 'a')
     assert.deepEqual(liveState.value.bgm.buffer, { decoded: 'a' })
     assert.deepEqual(decodes, ['b', 'a'])
+})
+
+test('a file picked again is held once: its audio and bytes are the ones the cache holds', async () => {
+    const first = picked('a')
+    applyPick(first, session.value.sessionId, operation)
+    applyPick(picked('b'), session.value.sessionId, operation)
+    let decodes = 0
+    const decode = () => {
+        decodes++
+        return Promise.resolve({ decoded: decodes } as unknown as AudioBuffer)
+    }
+    const again = await heldOrDecoded('a', new TextEncoder().encode('a').buffer, decode)
+    assert.equal(decodes, 0)
+    assert.equal(again.buffer, first.buffer)
+    assert.equal(again.source, first.source)
+    applyPick({ ...picked('a'), ...again }, session.value.sessionId, operation)
+    const named = loadedStates().filter(({ state }) => state.bgm.meta?.hash === 'a')
+    assert.equal(named.length, 2)
+    assert.equal(new Set(named.map(({ state }) => state.bgm.buffer)).size, 1)
+    assert.equal(new Set(named.map(({ state }) => state.bgm.source)).size, 1)
+    // A file the cache lacks is decoded, and keeps the bytes captured at its pick.
+    const source = new TextEncoder().encode('z').buffer
+    const fresh = await heldOrDecoded('z', source, decode)
+    assert.equal(decodes, 1)
+    assert.equal(fresh.source, source)
+})
+
+test('a file picked again after the cache let it go is decoded, with the bytes its undo slot kept', async () => {
+    const first = picked('a')
+    applyPick(first, session.value.sessionId, operation)
+    for (const hash of ['b', 'c', 'd']) applyPick(picked(hash), session.value.sessionId, operation)
+    assert.equal(cachedHashes().includes('a'), false)
+    const decoded = { decoded: 'a' } as unknown as AudioBuffer
+    const again = await heldOrDecoded('a', new TextEncoder().encode('a').buffer, () =>
+        Promise.resolve(decoded),
+    )
+    assert.equal(again.buffer, decoded)
+    assert.equal(again.source, first.source)
 })
