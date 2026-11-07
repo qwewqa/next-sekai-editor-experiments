@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { cleanupWaveform, createWaveform } from '../../src/waveform'
 import {
     createSpectrumSampler,
     FFT_BINS,
@@ -8,6 +9,7 @@ import {
     FFT_OPACITY,
     FFT_SIZE,
 } from '../../src/waveform/fft'
+import { getWaveformTilePixels } from '../../src/waveform/tiles'
 
 const sampleRate = 44100
 const tone = (frequency: number, amplitude = 0.2, length = FFT_SIZE * 4) =>
@@ -262,4 +264,43 @@ test('the FFT contrast table follows 0.25 b + 0.20 b^3 and never dims a level be
     }
     assert.equal(FFT_CONTRAST[0], 0, 'silence stays transparent')
     assert.equal(FFT_CONTRAST[255], 255, 'full scale draws at the full FFT opacity')
+})
+
+test('FFT tiles store the sampled spectrum through the contrast table', async () => {
+    // A tone rising from silence to full scale covers quiet and loud levels.
+    const length = sampleRate
+    const left = Float32Array.from(
+        { length },
+        (_, i) => (i / length) ** 2 * Math.sin((2 * Math.PI * 1000 * i) / sampleRate),
+    )
+    const right = Float32Array.from({ length }, (_, i) => 0.5 * (left[i] ?? 0))
+    const channels = [left, right]
+    const buffer = {
+        length,
+        sampleRate,
+        duration: length / sampleRate,
+        numberOfChannels: channels.length,
+        getChannelData: (channel: number) => channels[channel]!,
+    } as unknown as AudioBuffer
+    const waveform = (await createWaveform(buffer, 'fft'))!
+    try {
+        assert.equal(waveform.opacity, FFT_OPACITY)
+        const tile = getWaveformTilePixels(waveform.images[0]!)!
+        const sampler = createSpectrumSampler(channels, sampleRate)
+        const spectrum = new Uint8Array(FFT_BINS)
+        let changed = 0
+        for (let y = 0; y < 200; y++) {
+            sampler(((y + 0.5) * sampleRate) / 200, spectrum)
+            const stored = tile.alpha.subarray(
+                (tile.height - 1 - y) * FFT_BINS,
+                (tile.height - y) * FFT_BINS,
+            )
+            const expected = spectrum.map((value) => FFT_CONTRAST[value]!)
+            assert.deepEqual(stored, expected, `row ${y}`)
+            changed += expected.filter((value, x) => value !== spectrum[x]).length
+        }
+        assert.ok(changed > 1000, 'the table changes many stored bytes')
+    } finally {
+        cleanupWaveform()
+    }
 })
