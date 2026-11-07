@@ -1100,6 +1100,64 @@ test('width scaling moves a group as one, preserves cancellation and holds scale
     ])
 })
 
+for (const axis of ['beat', 'elevation'] as const) {
+    test(`${axis} scaling by a note past the limit leaves every lane, in Basic and Composed`, async ({
+        page,
+    }) => {
+        for (const layout of ['basic', 'composed'] as const) {
+            await seedLayout(page, layout, {
+                slides: [
+                    [{ beat: 4, left: 0, size: 2, elevation: 1 }],
+                    [{ beat: 8, left: 8, size: 2, elevation: 3 }],
+                ],
+            })
+            const { scaled, preview, result, undone } = await page.evaluate(async (axis) => {
+                const { history, store, appImport } = window.editorTest
+                const session = await appImport<
+                    typeof import('../../src/editor/commands/scaleSelection/session')
+                >('/src/editor/commands/scaleSelection/session.ts')
+                const { getPreviewState } =
+                    await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+                const lanes = (entities: readonly unknown[]) =>
+                    (entities as { type: string; left: number; size: number; beat: number }[])
+                        .filter((entity) => entity.type === 'note')
+                        .sort((a, b) => a.left - b.left)
+                        .map(({ left, size }) => ({ left, size }))
+                const notes = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+                const values = () =>
+                    JSON.stringify(
+                        [...store.getAllEntities()].flatMap((entity) =>
+                            entity.type === 'note' ? [entity.beat, entity.elevation] : [],
+                        ),
+                    )
+                const before = values()
+                history.replaceState({ ...history.state.value, selectedEntities: notes })
+                session.beginScalingSession(axis)
+                // The note past the limit is the grabbed endpoint.
+                const focus = notes.find((note) => note.left === 8)!
+                const value = axis === 'beat' ? focus.beat : focus.elevation
+                session.beginScalingDrag(focus, value)
+                session.updateScalingDrag(value + 2)
+                const preview = lanes(getPreviewState(history.state.value).selectedEntities)
+                session.endScalingDrag()
+                session.applyScalingSession()
+                const result = lanes([...store.getAllEntities()])
+                const scaled = values() !== before
+                await history.undoState()
+                return { scaled, preview, result, undone: lanes([...store.getAllEntities()]) }
+            }, axis)
+            const lanes = [
+                { left: 0, size: 2 },
+                { left: 8, size: 2 },
+            ]
+            expect(scaled).toBe(true)
+            expect(preview).toEqual(lanes)
+            expect(result).toEqual(lanes)
+            expect(undone).toEqual(lanes)
+        }
+    })
+}
+
 test('width scaling by an endpoint keeps edges inside the limit, and brings one past it in gradually, in Basic and Composed', async ({
     page,
 }) => {

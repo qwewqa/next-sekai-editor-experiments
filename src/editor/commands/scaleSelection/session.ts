@@ -489,18 +489,13 @@ export const updateScalingDrag = (value: number) => {
     const effectiveValue = active.value + delta
     if (active.lastValue === effectiveValue) return true
     const recorder = createDraftRecorder(session)
+    // Only a width scale of one object is fitted on its own: beat and elevation scales leave lanes
+    // alone, and several objects are held as a group above.
     const constrainDraft = (result: State) => {
-        if (
-            !(settings.maxLane > 0) ||
-            active.attached ||
-            (several && (!active.endpoint || axis === 'width'))
-        )
-            return result
+        if (!(settings.maxLane > 0) || axis !== 'width' || active.attached || several) return result
         const focus = recorder.get(result)?.live.get(active.baseline)
         if (!focus || !isEditableEntity(focus)) return result
-        const constrained = constrainLaneObject(focus, {
-            resizing: axis === 'width' && active.endpoint,
-        })
+        const constrained = constrainLaneObject(focus, { resizing: active.endpoint })
         return constrained === focus
             ? result
             : recorder.track(

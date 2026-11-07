@@ -609,7 +609,7 @@ for (const route of ['drag', 'promotedNumeric'] as const) {
     })
 }
 
-for (const previewKind of ['numeric', 'pointerClamp'] as const) {
+for (const previewKind of ['numeric', 'pointer'] as const) {
     test(`resolving an abandoned Scale preview cannot alter a new session: ${previewKind}`, async ({
         page,
     }) => {
@@ -656,7 +656,7 @@ for (const previewKind of ['numeric', 'pointerClamp'] as const) {
         }, previewKind)
         expect(result.exactBaseline).toBe(true)
         expect(result.newLeft).toBe(10)
-        expect(result.discardedLeft).toBe(previewKind === 'numeric' ? 10 : 4)
+        expect(result.discardedLeft).toBe(10)
         expect(result.step?.operation).toMatchObject({
             id: 'nse.object.scale',
             data: {
