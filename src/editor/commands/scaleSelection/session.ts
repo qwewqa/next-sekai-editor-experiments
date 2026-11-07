@@ -32,7 +32,12 @@ import {
 import { translateSelectionWithReceipt } from '../../../state/operations/translateSelection'
 import { getInStoreGrid } from '../../../state/store/grid'
 import { clamp } from '../../../utils/math'
-import { constrainLaneObject, getLaneShifts, limitLaneShift } from '../../laneLimits'
+import {
+    constrainLaneObject,
+    getLaneShifts,
+    getScaleFactors,
+    limitLaneShift,
+} from '../../laneLimits'
 import { notify } from '../../notification'
 import { toolName } from '../../tools/state'
 import { toMovedBeat, view } from '../../view'
@@ -454,8 +459,22 @@ export const updateScalingDrag = (value: number) => {
     const source = active.source
     const selected = source.selectedEntities
     const axis = session.axis
+    const several = getScaleEntities(selected, axis, source).length > 1
     if (axis === 'width' && settings.maxLane > 0) {
-        if (active.endpoint) {
+        if (active.endpoint && several) {
+            // Every scaled edge is held as a resize's: one within the limit stays within it, and
+            // one past it can only come back in.
+            const edges = getScaleEntities(selected, axis, source).flatMap((entity) => {
+                const { min, max } = getScaleBounds(entity, axis)
+                return [min, max]
+            })
+            if (active.attached) edges.push(active.bounds.min, active.bounds.max)
+            const span = active.entityValue - active.anchor
+            const ratio = (active.entityValue + delta - active.anchor) / span
+            const factors = getScaleFactors(edges, active.anchor)
+            if (ratio > 0 && factors)
+                delta = active.anchor + span * clamp(ratio, ...factors) - active.entityValue
+        } else if (active.endpoint) {
             delta =
                 clamp(active.entityValue + delta, -settings.maxLane, settings.maxLane) -
                 active.entityValue
@@ -474,7 +493,7 @@ export const updateScalingDrag = (value: number) => {
         if (
             !(settings.maxLane > 0) ||
             active.attached ||
-            (!active.endpoint && getScaleEntities(selected, axis, source).length > 1)
+            (several && (!active.endpoint || axis === 'width'))
         )
             return result
         const focus = recorder.get(result)?.live.get(active.baseline)

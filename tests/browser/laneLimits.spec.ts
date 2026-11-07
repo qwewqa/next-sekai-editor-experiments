@@ -1062,7 +1062,7 @@ test('elevation placement and selection movement honor limits in preview and on 
     expect((await notes(page))[0]!.left).toBe(ghost!.left)
 })
 
-test('width scaling moves a group as one, clamps the dragged edge, preserves cancellation and permits other selected notes outside', async ({
+test('width scaling moves a group as one, preserves cancellation and holds scaled edges to the limit', async ({
     page,
 }) => {
     await seed(page, true)
@@ -1089,13 +1089,69 @@ test('width scaling moves a group as one, clamps the dragged edge, preserves can
         const { commands } = await import('/src/editor/commands/index.ts')
         void commands.scaleWidth.execute()
     })
+    // The second note's right edge at 7 is past the limit and can go no further, so dragging the
+    // first note's right edge out scales nothing.
     await drag(page, await point(page, 1.95), await point(page, 9))
-    expect(await page.getByRole('spinbutton', { name: 'Scale Factor' }).inputValue()).toBe('3')
+    expect(await page.getByRole('spinbutton', { name: 'Scale Factor' }).inputValue()).toBe('1')
     await page.keyboard.press('Enter')
-    const result = await notes(page)
-    expect(result[0]!.left).toBe(0)
-    expect(result[0]!.size).toBe(6)
-    expect(result[1]!.left).toBe(15)
+    expect((await notes(page)).map(({ left, size }) => ({ left, size }))).toEqual([
+        { left: 0, size: 2 },
+        { left: 5, size: 2 },
+    ])
+})
+
+test('width scaling by an endpoint keeps edges inside the limit, and brings one past it in gradually, in Basic and Composed', async ({
+    page,
+}) => {
+    for (const layout of ['basic', 'composed'] as const) {
+        const scaled = async (slides: Seeded[][], from: number, to: number) => {
+            await seedLayout(page, layout, { slides })
+            await page.evaluate(async () => {
+                const { history, store } = window.editorTest
+                history.replaceState({
+                    ...history.state.value,
+                    selectedEntities: [...store.getAllEntities()].filter(
+                        (entity) => entity.type === 'note',
+                    ),
+                })
+                const { commands } = await import('/src/editor/commands/index.ts')
+                void commands.scaleWidth.execute()
+            })
+            await expect(page.locator('.scaling-panel')).toBeVisible()
+            const before = await placed(page)
+            const preview = await dragChart(page, [from, 4], [to, 4])
+            await page.keyboard.press('Enter')
+            await expect(page.locator('.scaling-panel')).toBeHidden()
+            const after = await placed(page)
+            if (JSON.stringify(after) !== JSON.stringify(before)) {
+                expect(preview).toEqual(after)
+                await page.keyboard.press('z')
+                expect(await placed(page)).toEqual(before)
+            }
+            return after.map(({ left, size }) => ({ left, size }))
+        }
+        const inside = [[{ beat: 4, left: 0, size: 2 }], [{ beat: 4, left: 3, size: 2 }]]
+        // An inner edge scales the selection only until the outer edge at 5 reaches 6.
+        expect(await scaled(inside, 1.95, 2.95)).toEqual([
+            { left: 0, size: 2.4 },
+            { left: 3.6, size: 2.4 },
+        ])
+        // As before: the outer endpoint stops at the limit.
+        expect(await scaled(inside, 4.95, 9)).toEqual([
+            { left: 0, size: 2.4 },
+            { left: 3.6, size: 2.4 },
+        ])
+        const past = [[{ beat: 4, left: 0, size: 2 }], [{ beat: 4, left: 8, size: 2 }]]
+        // An endpoint past the limit goes no further out, and comes in only as far as dragged.
+        expect(await scaled(past, 9.95, 10.95)).toEqual([
+            { left: 0, size: 2 },
+            { left: 8, size: 2 },
+        ])
+        expect(await scaled(past, 9.95, 8.95)).toEqual([
+            { left: 0, size: 1.8 },
+            { left: 7.2, size: 1.8 },
+        ])
+    }
 })
 
 test('all three lane limit commands remain accessible on a phone', async ({ page }, testInfo) => {

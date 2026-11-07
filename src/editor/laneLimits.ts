@@ -7,6 +7,7 @@ import {
     constrainLaneObject as constrain,
     edgeShiftRange,
     laneShiftRange,
+    scaleFactorRange,
 } from '../state/operations/laneLimits'
 import { clamp } from '../utils/math'
 import { view } from './view'
@@ -45,6 +46,12 @@ export const getLaneShifts = (spans: Iterable<readonly [number, number]>): LaneS
  */
 export const getEdgeShifts = (edges: Iterable<number>): LaneShifts | undefined =>
     edgeShiftRange(edges, settings.maxLane)
+
+/** The factors the lane limit allows a scale of edges about `anchor`, as resizes allow shifts. */
+export const getScaleFactors = (edges: Iterable<number>, anchor: number) =>
+    settings.maxLane > 0 && Number.isFinite(settings.maxLane)
+        ? scaleFactorRange(edges, anchor, settings.maxLane)
+        : undefined
 
 /** A group's lane shift, held to the lane limit. */
 export const limitLaneShift = (shift: number, shifts: LaneShifts | undefined) =>

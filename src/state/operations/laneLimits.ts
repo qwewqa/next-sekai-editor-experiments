@@ -107,6 +107,28 @@ export const edgeShiftRange = (
 }
 
 /**
+ * The factors that scale a group of edges about `anchor` without taking any further past -maxLane
+ * to maxLane: an edge within the range stays within it, and one past it can only come back in.
+ */
+export const scaleFactorRange = (
+    edges: Iterable<number>,
+    anchor: number,
+    maxLane: number,
+): readonly [number, number] => {
+    let low = 0
+    let high = Infinity
+    for (const edge of edges) {
+        const distance = edge - anchor
+        if (!distance) continue
+        const toMin = (Math.min(-maxLane, edge) - anchor) / distance
+        const toMax = (Math.max(maxLane, edge) - anchor) / distance
+        low = Math.max(low, Math.min(toMin, toMax))
+        high = Math.min(high, Math.max(toMin, toMax))
+    }
+    return [low, high]
+}
+
+/**
  * The lane shifts that keep a group of spans within -maxLane to maxLane as one: from where its left edge
  * reaches the limit to where its right edge does. A group past the limit can only shift back in.
  * One wider than the range takes no edge further past the limit: it comes in until its other edge

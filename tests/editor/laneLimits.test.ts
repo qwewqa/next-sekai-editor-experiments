@@ -6,6 +6,7 @@ import {
     edgeShiftRange,
     laneShiftRange,
     laneSpanOf,
+    scaleFactorRange,
 } from '../../src/state/operations/laneLimits'
 
 test('unlimited and already-contained objects preserve identity and unrelated properties', () => {
@@ -264,4 +265,14 @@ test('previous default view group moves elevation to transforms without duplicat
     assert.deepEqual(migrated[2], ['zoomXIn', 'zoomXOut', 'zoomYIn', 'zoomYOut'])
     assert.equal(migrated.length, groups.length)
     assert.equal(migrateToolbar(migrated), migrated)
+})
+
+test('scaled edges keep within the limit, and one past it only comes back in', () => {
+    // About 0: the edge at 5 reaches 6 at 1.2.
+    assert.deepEqual(scaleFactorRange([0, 2, 3, 5], 0, 6), [0, 1.2])
+    // The edge at 10 is past it: it can only come in.
+    assert.deepEqual(scaleFactorRange([0, 2, 8, 10], 0, 6), [0, 1])
+    // About an anchor past it at 7: shrinking stops when the edge at 5 meets 6, and growing when
+    // the edge at 0 meets -6.
+    assert.deepEqual(scaleFactorRange([0, 2, 5, 7], 7, 6), [0.5, 13 / 7])
 })
