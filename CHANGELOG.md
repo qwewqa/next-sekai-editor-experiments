@@ -9,6 +9,7 @@
 - When objects of several kinds are selected, the Properties panel now shows General first. Beat now also appears for notes and events selected together with BPM changes or time scales. Notes and stage transform events now have separate Elevation fields, both when selected together and in Brush Properties.
 - The BGM no longer plays briefly when you move the playback cursor with the preview, Jump to Start, Jump to End, Stop or the Elevation Editor.
 - With a lane limit set, moving or pasting several objects now stops them all when any object reaches the limit. Resizing several notes now stops all resized edges when any edge reaches the limit.
+- With Waveform Visualization set to FFT, the BGM waveform now has more contrast, making it easier to see where sounds start in loud passages.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
 - Antialiasing is now off by default in the preview. To turn it on, use Preview Settings or Settings › Preview.
