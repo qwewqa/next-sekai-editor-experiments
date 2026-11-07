@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
+import { nextTick } from 'vue'
 import { bgmInput } from '../../src/editor/headerLabelText'
 import type { bgmOperation } from '../../src/editor/headerLabels'
 import { applyPick, decidePick, type PickedBgm } from '../../src/editor/media/applyPick'
 import {
+    cacheHeld,
     cachedHashes,
     configureHeldBgm,
     heldOrDecoded,
@@ -15,6 +17,7 @@ import {
     canUndo,
     liveState,
     loadedStates,
+    pushState,
     redoState,
     resetStates,
     setSlotLoader,
@@ -239,6 +242,24 @@ test('a file held decoded comes back with its waveform from the cache', async ()
         Promise.reject(new Error('unused')),
     )
     assert.equal(again.waveform, first.waveform)
+})
+
+test('an eviction drops the audio from the slots at once, with no change of the head', () => {
+    for (const hash of ['a', 'b', 'c']) applyPick(picked(hash), session.value.sessionId, operation)
+    assert.ok(loadedStates().some(({ state }) => state.bgm.meta?.hash === 'a' && state.bgm.buffer))
+    // A decode for another hash (a peek's, a startup read's) fills the cache past `a`.
+    cacheHeld('x', { buffer: { x: 1 } as unknown as AudioBuffer, source: new ArrayBuffer(1) })
+    assert.ok(!loadedStates().some(({ state }) => state.bgm.meta?.hash === 'a' && state.bgm.buffer))
+})
+
+test('a new head drops audio that only the previous head held', async () => {
+    // A head whose audio the cache never had, as a state given with its audio has.
+    const kept = { offset: 0, meta: meta('x'), buffer: { x: 1 } as unknown as AudioBuffer }
+    show(kept)
+    pushState(operation(kept, { offset: 0 }), stateOf({ offset: 0 }))
+    await nextTick()
+    assert.equal(loadedStates()[0]?.state.bgm.buffer, undefined)
+    assert.equal(loadedStates()[0]?.state.bgm.meta, kept.meta)
 })
 
 test('Undo and Redo onto audio decoded again keep the waveform the slot has, drawing none', async () => {

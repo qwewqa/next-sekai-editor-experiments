@@ -536,8 +536,9 @@ watch(
     { flush: 'sync' },
 )
 
-// A head with other audio (a BGM change, Undo or Redo across one) leaves the previous audio to the cache.
-watch(() => (liveState.value as State | undefined)?.bgm.buffer, releaseUnheld)
+// A head with other audio (a BGM change, Undo or Redo across one) leaves the previous audio to the
+// cache. Synchronous, so a head that changes twice before a flush is seen both times.
+watch(() => (liveState.value as State | undefined)?.bgm.buffer, releaseUnheld, { flush: 'sync' })
 
 /** The live BGM's hash is the one entry the cache keeps; exposed for the tests. */
 export const cachedHashes = () => [...cache.keys()]
