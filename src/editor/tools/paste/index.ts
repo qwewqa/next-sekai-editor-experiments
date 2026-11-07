@@ -718,7 +718,8 @@ export type PastePositionOptions = {
     /** The main chart canvas supplies display lanes; elevation keeps its own mapping. */
     composed?: boolean
     notesOnly?: boolean
-    mapNote?: (entity: NoteEntity, beat: number) => Partial<NoteObject>
+    // `index` is the note's place among the pasted notes.
+    mapNote?: (entity: NoteEntity, beat: number, index: number) => Partial<NoteObject>
     at?: 'pointer' | 'position'
 }
 
@@ -769,6 +770,7 @@ export const pasteAtPosition = async (
 
     const selectedEntities: Entity[] = []
     const lanes = toBasicPasteLanes(landing(entities), onlyType, data.lane, lane, modifiers.shift)
+    let noteIndex = 0
     for (const entity of entities) {
         const beat = toMovedBeat(entity.beat, shiftedOffset)
 
@@ -776,7 +778,7 @@ export const pasteAtPosition = async (
             selectedEntities.push(
                 ...addNote(transaction, entity.slideId, {
                     ...toMovedNoteObject(entity, lanes, beat),
-                    ...options.mapNote(entity, beat),
+                    ...options.mapNote(entity, beat, noteIndex++),
                 }),
             )
             continue

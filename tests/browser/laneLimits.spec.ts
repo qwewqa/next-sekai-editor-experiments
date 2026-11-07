@@ -656,6 +656,65 @@ test('an Elevation Editor paste keeps the shape of a group against the limit', a
         ])
 })
 
+test('an Elevation Editor paste of one note wider than the range lands as its ghost shows, in Basic and Composed', async ({
+    page,
+}) => {
+    const results = await page.evaluate(async () => {
+        const { show, fixtures, history, store, settings, view, appImport } = window.editorTest
+        const { commands } = await appImport<typeof import('../../src/editor/commands')>(
+            '/src/editor/commands/index.ts',
+        )
+        const { openElevationEditor } = await appImport<
+            typeof import('../../src/editor/elevation/state')
+        >('/src/editor/elevation/state.ts')
+        const actions = await appImport<typeof import('../../src/editor/elevation/actions')>(
+            '/src/editor/elevation/actions.ts',
+        )
+        const { clipboardEntry } =
+            await appImport<typeof import('../../src/clipboard')>('/src/clipboard/index.ts')
+        const note = fixtures.interaction.slides[0]![0]!
+        const modifiers = { ctrl: false, shift: false } as never
+        const results = []
+        for (const layout of ['basic', 'composed'] as const) {
+            show({
+                ...fixtures.events,
+                isDynamicStages: true,
+                cameraEvents: [],
+                stageMaskEvents: [],
+                stagePivotEvents: [],
+                stageStyleEvents: [],
+                stageTransformEvents: [],
+                timeScales: [],
+                slides: [[{ ...note, beat: 4, left: -8, size: 16 }]],
+            })
+            settings.maxLane = 6
+            view.layout = layout
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: [...store.getAllEntities()].filter(
+                    (entity) => entity.type === 'note',
+                ),
+            })
+            await commands.copy.execute()
+            openElevationEditor(8)
+            const lane = clipboardEntry.value!.data!.lane
+            const ghost = actions
+                .previewElevationPaste(lane, 0, 8, modifiers)
+                .notes.map(({ left, size }) => ({ left, size }))
+            await actions.pasteElevationNotes(lane, 0, 8, modifiers)
+            const pasted = history.state.value.selectedEntities.flatMap((entity) =>
+                entity.type === 'note' ? [{ left: entity.left, size: entity.size }] : [],
+            )
+            results.push({ ghost, pasted })
+        }
+        return results
+    })
+    for (const { ghost, pasted } of results) {
+        expect(ghost).toEqual([{ left: -6, size: 12 }])
+        expect(pasted).toEqual(ghost)
+    }
+})
+
 test('elevation placement and selection movement honor limits in preview and on commit', async ({
     page,
 }) => {

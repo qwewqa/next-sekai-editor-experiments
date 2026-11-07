@@ -239,8 +239,14 @@ const getElevationPaste = (lane: number, elevation: number, beat: number, modifi
         delta === undefined
             ? toBasicPasteLanes(notes, 'note', data.lane, lane, modifiers.shift)
             : toPasteLanes(notes, 'note', data.lane, delta, modifiers.shift)
-    const mapNote = (note: NoteEntity, destinationBeat: number) => ({
-        ...toMovedNoteObject(note, lanes, destinationBeat),
+    // The paste builds its notes afresh, so the lone note is known by its place.
+    const lone = lanes.lone ? notes.indexOf(lanes.lone as NoteEntity) : -1
+    const mapNote = (note: NoteEntity, destinationBeat: number, index: number) => ({
+        ...toMovedNoteObject(
+            note,
+            { ...lanes, lone: index === lone ? note : undefined },
+            destinationBeat,
+        ),
         elevation: note.elevation + elevationDelta,
     })
     return { notes, mapNote, beatOffset, startLane: data.lane }
@@ -255,8 +261,8 @@ export const previewElevationPaste = (
     const paste = getElevationPaste(lane, elevation, beat, modifiers)
     if (!paste) return { notes: [], infos: undefined }
     const slides = new Map<NoteEntity['slideId'], NoteObject[]>()
-    for (const note of paste.notes) {
-        const object = paste.mapNote(note, toMovedBeat(note.beat, paste.beatOffset))
+    for (const [index, note] of paste.notes.entries()) {
+        const object = paste.mapNote(note, toMovedBeat(note.beat, paste.beatOffset), index)
         const slide = slides.get(note.slideId)
         if (slide) slide.push(object)
         else slides.set(note.slideId, [object])
