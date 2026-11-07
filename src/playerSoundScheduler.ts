@@ -41,9 +41,11 @@ export const createSoundScheduler = ({
     let hideChanges: { grid: unknown; byGroup: Map<GroupId, HideChange[]> } | undefined
     const chartTime = (time: number) => (time - start.contextTime) * start.speed + start.time
     const audioTime = (time: number) => (time - start.time) / start.speed + start.contextTime
+    let bgmStarted = false
 
     return {
         startBgm() {
+            bgmStarted = !!buffers.bgm.buffer
             if (buffers.bgm.buffer)
                 schedule(
                     context,
@@ -132,6 +134,25 @@ export const createSoundScheduler = ({
             }
             continuation = hit.value
             scheduledUntil = to
+        },
+        /**
+         * Starts the BGM's audio when it arrives after the start (still decoding then), at the
+         * chart time playing now. Once, and only for a BGM that had none.
+         */
+        adoptBgm(buffer: AudioBuffer) {
+            if (bgmStarted) return
+            bgmStarted = true
+            const when = Math.max(context.currentTime, start.contextTime)
+            schedule(
+                context,
+                bgmNodes,
+                buffer,
+                volumes.bgm(),
+                when,
+                chartTime(when) + buffers.bgm.offset,
+                start.speed,
+                true,
+            )
         },
         setBgmVolume(value: number) {
             for (const audio of bgmNodes) audio.setVolume(value)

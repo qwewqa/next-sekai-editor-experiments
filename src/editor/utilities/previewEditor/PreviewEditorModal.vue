@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UtilityResult } from '../../levelInfo/picked'
-import { computed, ref, provide, useTemplateRef } from 'vue'
+import { computed, ref, provide, useTemplateRef, watch } from 'vue'
 import { bgm } from '../../../history/live'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
@@ -29,6 +29,15 @@ const emit = defineEmits<{
 }>()
 
 const buffer = ref(bgm.value.buffer)
+// The live BGM's audio may still be decoding when this opens; it is taken once it arrives, unless
+// another file was chosen here.
+let chosen = false
+watch(
+    () => bgm.value.buffer,
+    (live) => {
+        if (!chosen && !buffer.value && live) buffer.value = live
+    },
+)
 
 const start = ref(0)
 const end = ref(30)
@@ -75,6 +84,7 @@ const onSelect = (file: File) => {
             // decodeAudioData cannot be interrupted; discard a late result
             // instead of replacing audio selected after this task was closed.
             signal.throwIfAborted()
+            chosen = true
             buffer.value = decoded
         },
     })

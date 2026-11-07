@@ -77,8 +77,17 @@ let pendingResumes = 0
 let resumeSince: number | undefined
 // The clock's last reading while playing, and when it changed.
 let clockReading: { time: number; at: number } | undefined
+/** The hash of the BGM Play started without audio, while it is still decoding. */
+let awaitedBgm: string | undefined
 const scheduleAudio = () => {
-    if (!state.value || !areSfxReady) return
+    if (!state.value) return
+    // Audio that arrives for the BGM Play started with plays from there on.
+    const { buffer, meta } = bgm.value
+    if (awaitedBgm !== undefined && buffer && meta?.hash === awaitedBgm) {
+        awaitedBgm = undefined
+        state.value.sounds.adoptBgm(buffer)
+    }
+    if (!areSfxReady) return
     state.value.sounds.schedule()
 }
 
@@ -202,6 +211,7 @@ export const startPlayer = (
     stopPreviewPlayer()
 
     state.value.sounds.startBgm()
+    awaitedBgm = bgm.value.buffer ? undefined : bgm.value.meta?.hash
 
     // Queue the first window even if resume is pending; native audio starts and
     // the cursor share the same suspended clock, and stop cancels these sources.
@@ -221,6 +231,7 @@ export const startPlayer = (
 // `immediately` skips the fade, because a fade on a clock that stands still never ends.
 const stopPlayback = (immediately: boolean) => {
     displayClockState = undefined
+    awaitedBgm = undefined
     clearScheduler()
     clearTimeout(startCheck)
     startCheck = undefined

@@ -429,3 +429,46 @@ test('hold cleanup checks the clock again before extending the next voice', asyn
     assert.ok(calls.some(([method, , when]) => method === 'start' && when === 10.05))
     for (const active of actives) active.stop()
 })
+
+test('Play pressed while the BGM still decodes starts its audio once the decode completes', (t) => {
+    let schedule: () => void = () => {}
+    t.mock.method(globalThis, 'setInterval', (callback: () => void) => {
+        schedule = callback
+        return 1
+    })
+    t.mock.method(globalThis, 'clearInterval', () => {})
+    t.mock.method(globalThis, 'setTimeout', () => 1)
+    t.mock.method(globalThis, 'clearTimeout', () => {})
+    calls = []
+    nextId = 0
+    playbackContext.currentTime = 10
+    const chart = soundCharts()[0]!
+    const meta = { hash: 'a', filename: 'a', size: 1, type: 'audio/wav' }
+    state.value = { ...chart, bgm: { offset: 0.5, meta } }
+    player.startPlayer(1, 1, () => assert.fail('start failed'))
+    const bgmSources = () =>
+        calls.filter(
+            ([method, , options]) =>
+                method === 'source' &&
+                (options as AudioBufferSourceOptions).buffer === (buffer as unknown),
+        )
+    const buffer = { clip: 'bgm' } as unknown as AudioBuffer
+    playbackContext.currentTime = 11
+    schedule()
+    assert.equal(bgmSources().length, 0)
+    // The decode completes: the state gets the audio, and the next window starts it.
+    state.value = { ...state.value, bgm: { offset: 0.5, meta, buffer } }
+    playbackContext.currentTime = 12
+    schedule()
+    const [source] = bgmSources()
+    assert.ok(source)
+    // At the chart time playing now (Play at 1 s, 1.8 s since the 0.2 s preroll), with the offset.
+    const start = calls.find(([method, id]) => method === 'start' && id === source[1])
+    assert.equal(start?.[2], 12)
+    assert.ok(Math.abs((start?.[3] as number) - (1 + 1.8 + 0.5)) < 1e-9)
+    // Once only.
+    playbackContext.currentTime = 13
+    schedule()
+    assert.equal(bgmSources().length, 1)
+    player.stopPlayer()
+})
