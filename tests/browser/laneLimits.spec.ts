@@ -762,6 +762,62 @@ test('an Elevation Editor resize of one note moves only its dragged edge, which 
     }
 })
 
+// A note narrower than the minimum width at a coarser lane division, with an edge at the limit.
+const narrow = [
+    { left: 5.5, from: 5.95, to: 6.95 },
+    { left: -5.75, from: -5.95, to: -6.95 },
+] as const
+
+for (const [key, name] of [
+    ['f', 'select'],
+    ['a', 'note'],
+    ['s', 'slide'],
+] as const) {
+    test(`a ${name} resize of a note narrower than the minimum width at the limit leaves it as it is, in Basic and Composed`, async ({
+        page,
+    }) => {
+        for (const layout of ['basic', 'composed'] as const) {
+            for (const { left, from, to } of narrow) {
+                await seedLayout(page, layout, { slides: [[{ beat: 4, left, size: 0.25 }]] })
+                await page.evaluate(() => {
+                    window.editorTest.view.laneDivision = 1
+                })
+                await page.keyboard.press(key)
+                const preview = await dragChart(page, [from, 4], [to, 4])
+                // Its minimum width of 1 fits neither past the limit nor across its fixed edge.
+                expect(await placed(page)).toEqual([{ beat: 4, left, size: 0.25 }])
+                expect(preview.filter(({ size }) => size !== 0.25)).toEqual([])
+            }
+        }
+    })
+}
+
+test('an Elevation Editor resize of a note narrower than the minimum width at the limit leaves it as it is', async ({
+    page,
+}) => {
+    for (const layout of ['basic', 'composed'] as const) {
+        for (const { left, from, to } of narrow) {
+            await seedLayout(page, layout, {
+                slides: [[{ beat: 4, left, size: 0.25, elevation: 1 }]],
+            })
+            await page.evaluate(async () => {
+                window.editorTest.view.laneDivision = 1
+                window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+                const { openElevationEditor } = await import('/src/editor/elevation/state.ts')
+                openElevationEditor(4)
+                await window.editorTest.nextTick()
+            })
+            await expect(page.locator('.elevation-canvas')).toBeVisible()
+            await page.keyboard.press('f')
+            await drag(page, await elevationPoint(page, from, 1), await elevationPoint(page, to, 1))
+            expect((await notes(page)).map(({ left, size }) => ({ left, size }))).toEqual([
+                { left, size: 0.25 },
+            ])
+            await page.keyboard.press('Escape')
+        }
+    }
+})
+
 for (const [key, name, type] of [
     ['f', 'select', 'camera'],
     ['f', 'select', 'mask'],

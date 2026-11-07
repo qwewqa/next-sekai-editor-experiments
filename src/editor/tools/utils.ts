@@ -124,14 +124,19 @@ export const resize = (
     const size = clamp(alignComputed(Math.abs(edge - anchor)), min, max)
 
     // The fixed edge stays as given; callers snap one that is a sum.
+    const place = (right: boolean) => [right ? anchor : alignComputed(anchor - size), size] as const
     const right = lane >= anchor
-    const placed = [right ? anchor : alignComputed(anchor - size), size] as const
-    // A minimum size that would take the far edge past `range` across the fixed edge keeps
-    // the dragged edge's side.
-    if (!range || startEdge === anchor || right === startEdge > anchor) return placed
-    const far = right ? anchor + size : placed[0]
-    if (far >= range[0] && far <= range[1]) return placed
-    return [right ? alignComputed(anchor - size) : anchor, size] as const
+    if (!range || startEdge === anchor) return place(right)
+    // A minimum size that would take the far edge past `range` keeps the dragged edge's side,
+    // and where it does not fit there either, the span as it was.
+    // Sums carry float noise, so the range gets a hair of slack.
+    const fits = (right: boolean) => {
+        const far = right ? anchor + size : anchor - size
+        return far >= range[0] - 1e-9 && far <= range[1] + 1e-9
+    }
+    if (fits(right)) return place(right)
+    const side = startEdge > anchor
+    return side !== right && fits(side) ? place(side) : (original ?? place(right))
 }
 
 /**
