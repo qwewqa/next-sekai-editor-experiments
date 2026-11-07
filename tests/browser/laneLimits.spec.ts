@@ -686,10 +686,10 @@ for (const [key, name] of [
     ['a', 'note'],
     ['s', 'slide'],
 ] as const) {
-    test(`a ${name} resize of one note moves only its dragged edge, which goes no further past the limit, by hotkey and command, in Basic and Composed`, async ({
-        page,
-    }) => {
-        for (const layout of ['basic', 'composed'] as const) {
+    for (const layout of ['basic', 'composed'] as const) {
+        test(`a ${name} resize of one note moves only its dragged edge, which goes no further past the limit, by hotkey and command, ${layout}`, async ({
+            page,
+        }) => {
             for (const how of ['hotkey', 'command'] as const) {
                 const resized = async (note: Seeded, from: number, to: number) => {
                     await seedLayout(page, layout, { slides: [[note]] })
@@ -720,21 +720,30 @@ for (const [key, name] of [
                 expect(await resized({ beat: 4, left: 0, size: 2 }, 1.95, 9)).toEqual([
                     { left: 0, size: 6 },
                 ])
+                // Dragged onto or past a fixed edge at the limit, the note keeps its minimum
+                // width on its own side rather than crossing past the limit.
+                for (const to of [6, 8.5])
+                    expect(await resized({ beat: 4, left: 4, size: 2 }, 4.05, to)).toEqual([
+                        { left: 5, size: 1 },
+                    ])
             }
-        }
-    })
+        })
+    }
 }
 
 test('an Elevation Editor resize of one note moves only its dragged edge, which goes no further past the limit', async ({
     page,
 }) => {
     for (const layout of ['basic', 'composed'] as const) {
-        for (const [from, to, expected] of [
-            [9.95, 8.95, { left: 8, size: 1 }],
-            [9.95, 10.95, { left: 8, size: 2 }],
+        for (const [left, from, to, expected] of [
+            [8, 9.95, 8.95, { left: 8, size: 1 }],
+            [8, 9.95, 10.95, { left: 8, size: 2 }],
+            // Onto and past a fixed edge at the limit: the minimum width stays on its side.
+            [4, 4.05, 6, { left: 5, size: 1 }],
+            [4, 4.05, 8.5, { left: 5, size: 1 }],
         ] as const) {
             await seedLayout(page, layout, {
-                slides: [[{ beat: 4, left: 8, size: 2, elevation: 1 }]],
+                slides: [[{ beat: 4, left, size: 2, elevation: 1 }]],
             })
             await page.evaluate(async () => {
                 window.editorTest.settings.elevationEditorSideBySide = 'disallow'
@@ -805,6 +814,36 @@ for (const [key, name, type] of [
         expect(preview).toEqual({ left: 3, size: 7 })
         await page.keyboard.press('z')
         expect(await ranges()).toEqual([{ left: 2, size: 8 }])
+    })
+}
+
+for (const [key, name] of [
+    ['f', 'select'],
+    [undefined, 'cameraEvent'],
+] as const) {
+    test(`a ${name} resize of a camera onto or past its fixed edge at the limit keeps the camera on its side`, async ({
+        page,
+    }) => {
+        for (const to of [6.1, 9]) {
+            await seedLayout(page, 'basic', { cameras: [{ beat: 4, left: 0, size: 6 }] })
+            if (key) await page.keyboard.press(key)
+            else
+                await page.evaluate(async (name) => {
+                    const { switchToolTo } = await import('/src/editor/tools/index.ts')
+                    switchToolTo(name)
+                }, name)
+            await drag(page, await point(page, 0.1, 4), await point(page, to, 4))
+            // Its minimum width of 6 fits only where it is.
+            expect(
+                await page.evaluate(() =>
+                    [...window.editorTest.store.getAllEntities()].flatMap((entity) =>
+                        entity.type === 'cameraEventJoint'
+                            ? [{ left: entity.cameraLeft, size: entity.cameraSize }]
+                            : [],
+                    ),
+                ),
+            ).toEqual([{ left: 0, size: 6 }])
+        }
     })
 }
 

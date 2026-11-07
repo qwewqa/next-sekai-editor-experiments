@@ -115,6 +115,8 @@ export const resize = (
     original?: readonly [left: number, size: number],
     origin = 0,
     shift = resizeShift(startEdge, lane, origin),
+    // Where the moving edge may end, under a lane limit.
+    range?: readonly [number, number],
 ) => {
     // An edge dragged back to its start keeps the values exactly.
     if (original && shift === 0) return original
@@ -122,7 +124,14 @@ export const resize = (
     const size = clamp(alignComputed(Math.abs(edge - anchor)), min, max)
 
     // The fixed edge stays as given; callers snap one that is a sum.
-    return [lane >= anchor ? anchor : alignComputed(anchor - size), size] as const
+    const right = lane >= anchor
+    const placed = [right ? anchor : alignComputed(anchor - size), size] as const
+    // A minimum size that would take the far edge past `range` across the fixed edge keeps
+    // the dragged edge's side.
+    if (!range || startEdge === anchor || right === startEdge > anchor) return placed
+    const far = right ? anchor + size : placed[0]
+    if (far >= range[0] && far <= range[1]) return placed
+    return [right ? alignComputed(anchor - size) : anchor, size] as const
 }
 
 /**

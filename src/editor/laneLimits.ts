@@ -53,6 +53,12 @@ export const getScaleFactors = (edges: Iterable<number>, anchor: number) =>
         ? scaleFactorRange(edges, anchor, settings.maxLane)
         : undefined
 
+/** Where a resized edge may end under the lane limit: within it, or no further past it. */
+export const getEdgeRange = (edge: number): LaneShifts | undefined => {
+    const shifts = getEdgeShifts([edge])
+    return shifts && [edge + shifts[0], edge + shifts[1]]
+}
+
 /** A group's lane shift, held to the lane limit. */
 export const limitLaneShift = (shift: number, shifts: LaneShifts | undefined) =>
     shifts ? clamp(shift, shifts[0], shifts[1]) : shift

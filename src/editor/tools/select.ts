@@ -89,6 +89,7 @@ import {
 import type { Modifiers } from '../controls/gestures/pointer'
 import {
     constrainLaneObject,
+    getEdgeRange,
     getEdgeShifts,
     getLaneShifts,
     limitLaneShift,
@@ -1101,6 +1102,7 @@ const toMovedCameraEventObject = (
             [entity.cameraLeft, entity.cameraSize],
             undefined,
             shift,
+            getEdgeRange(edge),
         )
 
         return constrainLaneObject(
@@ -1164,6 +1166,7 @@ const toMovedStageMaskEventObject = (
             [entity.maskLeft, entity.maskSize],
             undefined,
             shift,
+            getEdgeRange(edge),
         )
 
         return constrainLaneObject(
@@ -1321,6 +1324,7 @@ const toMovedNoteObject = (
             [entity.left, entity.size],
             undefined,
             shift,
+            getEdgeRange(edge),
         )
 
         return constrainLaneObject(

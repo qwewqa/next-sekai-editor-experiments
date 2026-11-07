@@ -397,6 +397,7 @@ const toResizedObject = (
         [entity.cameraLeft, entity.cameraSize],
         undefined,
         limited.shift,
+        limited.range,
     )
     return { ...entity, cameraLeft, cameraSize }
 }

@@ -396,6 +396,7 @@ const toResizedObject = (
         [entity.maskLeft, entity.maskSize],
         undefined,
         limited.shift,
+        limited.range,
     )
     return { ...entity, maskLeft, maskSize }
 }

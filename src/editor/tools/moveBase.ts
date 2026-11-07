@@ -112,6 +112,7 @@ export const toResizedNoteObject = (
         [entity.left, entity.size],
         origin,
         limited.shift,
+        limited.range,
     )
     return { ...entity, left, size }
 }

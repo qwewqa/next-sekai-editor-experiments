@@ -86,6 +86,7 @@ import { editorNavigation, type EditorNavigation } from '../navigation'
 import { closeContextMenu, contextMenu } from '../contextMenu'
 import {
     constrainLaneObject,
+    getEdgeRange,
     getEdgeShifts,
     getLaneShifts,
     limitLaneShift,
@@ -729,6 +730,7 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
               [note.left, note.size],
               undefined,
               shift,
+              getEdgeRange(edge),
           )
         : [
               active.deltaLane === 0 ? note.left : alignComputed(note.left + active.deltaLane),
