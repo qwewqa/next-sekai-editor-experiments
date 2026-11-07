@@ -550,6 +550,20 @@ export const restoreStates = (
     prefetch()
 }
 
+/**
+ * Drops the decoded audio `keep` refuses from every loaded slot but the head. The slot keeps its
+ * BGM's meta, bytes and waveform, and its stored root; Undo or Redo onto it attaches the audio again.
+ */
+export const releaseSlotAudio = (keep: (buffer: AudioBuffer) => boolean) => {
+    const head = current.value as Slot | undefined
+    for (const slot of states) {
+        const held = slot.state
+        if (slot === head || !held?.bgm.buffer || keep(held.bgm.buffer)) continue
+        const { buffer: _buffer, ...bgm } = held.bgm
+        slot.state = publish({ ...held, bgm })
+    }
+}
+
 /** The loaded slots' states, with their stored roots when restored: peek reuses them. */
 export const loadedStates = () =>
     states.flatMap(({ state, snapshot }) => (state ? [{ state, snapshot }] : []))

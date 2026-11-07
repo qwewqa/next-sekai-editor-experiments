@@ -48,7 +48,9 @@ const remember = (state: State, hex: string) => {
     const known = rootsByStore.get(state.store) ?? []
     if (known.some((each) => each.hex === hex && sameParts(each.state, state))) return
     // A store's states rarely differ in their header; a few are kept.
-    rootsByStore.set(state.store, [{ state, hex }, ...known].slice(0, 4))
+    // Kept for its parts only: without its decoded audio, which the stack lets go.
+    const { buffer: _buffer, ...bgm } = state.bgm
+    rootsByStore.set(state.store, [{ state: { ...state, bgm }, hex }, ...known].slice(0, 4))
 }
 
 export const rememberRoots = (roots: readonly (readonly [State, Uint8Array])[]) => {

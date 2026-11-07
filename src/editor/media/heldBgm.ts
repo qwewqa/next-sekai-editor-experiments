@@ -1,7 +1,7 @@
 import { nextTick, watch } from 'vue'
 import { recordError } from '../../diagnostics'
 import { session } from '../../history/session'
-import { isPeeking, liveState, replaceState } from '../../history/stack'
+import { isPeeking, liveState, releaseSlotAudio, replaceState } from '../../history/stack'
 import type { BatchMedia } from '../../local/flushWrite'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
@@ -215,6 +215,15 @@ export const noticeRefused = (hash: string, error: unknown, startup = false) => 
 
 const liveHash = () => liveState.value.bgm.meta?.hash
 
+/** Decoded audio stays only where the head or the cache holds it; other slots get it back on landing. */
+const releaseUnheld = () => {
+    const held = new Set<AudioBuffer | undefined>([
+        (liveState.value as State | undefined)?.bgm.buffer,
+    ])
+    for (const parts of cache.values()) held.add(parts.buffer)
+    releaseSlotAudio((buffer) => held.has(buffer))
+}
+
 /** Puts a hash's parts in the cache, the most recently used; the oldest goes, never the live head's. */
 export const cacheHeld = (hash: string, parts: HeldParts) => {
     cache.delete(hash)
@@ -225,6 +234,7 @@ export const cacheHeld = (hash: string, parts: HeldParts) => {
         if (oldest === undefined) break
         cache.delete(oldest)
     }
+    releaseUnheld()
 }
 
 export const cachedHeld = (hash: string) => {
@@ -309,27 +319,30 @@ type Fetch = { stored: Promise<StoredStatus>; parts: Promise<HeldParts | undefin
 type Read = { kind: 'bytes'; bytes: ArrayBuffer } | { kind: 'absent' } | { kind: 'failed' }
 
 /** The stored bytes of a hash, read and decoded once; the result is cached while its session lasts. */
-const fetchHeld = (hash: string, size: number | undefined): Fetch => {
+const fetchHeld = (hash: string, size: number | undefined, held?: ArrayBuffer): Fetch => {
     const known = fetching.get(hash)
     if (known) return known
     const env = environment
     const started = session.value.sessionId
-    const read: Promise<Read> = env
-        ? env.read(hash, size).then(
-              (bytes): Read => (bytes ? { kind: 'bytes', bytes } : { kind: 'absent' }),
-              (error: unknown): Read => {
-                  recordError(error)
-                  return { kind: 'failed' }
-              },
-          )
-        : Promise.resolve({ kind: 'failed' })
+    // A slot that kept its bytes is decoded from them: no read, and storage need not hold them.
+    const read: Promise<Read> = held
+        ? Promise.resolve({ kind: 'bytes', bytes: held.slice(0) })
+        : env
+          ? env.read(hash, size).then(
+                (bytes): Read => (bytes ? { kind: 'bytes', bytes } : { kind: 'absent' }),
+                (error: unknown): Read => {
+                    recordError(error)
+                    return { kind: 'failed' }
+                },
+            )
+          : Promise.resolve({ kind: 'failed' })
     const fetch: Fetch = {
         stored: read.then((result) => (result.kind === 'bytes' ? 'held' : result.kind)),
         parts: read.then(async (result) => {
             // A hash refused for its length is never decoded again; its status stays as read.
             if (result.kind !== 'bytes' || !env || refused.has(hash)) return
             try {
-                const source = result.bytes.slice(0)
+                const source = held ?? result.bytes.slice(0)
                 const decoded = await env.decode(result.bytes)
                 const parts: HeldParts = {
                     ...decoded,
@@ -391,7 +404,7 @@ const reattach = async (id: string, bgm: Bgm, moved: boolean, startup: boolean) 
         attachHeld(id, meta.hash, cached)
         return
     }
-    const fetch = fetchHeld(meta.hash, meta.size)
+    const fetch = fetchHeld(meta.hash, meta.size, bgm.source)
     const stored = await fetch.stored
     if (stored === 'absent') {
         const live = liveState.value.bgm
@@ -482,6 +495,9 @@ watch(
     },
     { flush: 'sync' },
 )
+
+// A head with other audio (a BGM change, Undo or Redo across one) leaves the previous audio to the cache.
+watch(() => (liveState.value as State | undefined)?.bgm.buffer, releaseUnheld)
 
 /** The live BGM's hash is the one entry the cache keeps; exposed for the tests. */
 export const cachedHashes = () => [...cache.keys()]

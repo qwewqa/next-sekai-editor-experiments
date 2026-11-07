@@ -10,7 +10,14 @@ import {
     settleHeldBgm,
 } from '../../src/editor/media/heldBgm'
 import { createSessionDescriptor, session } from '../../src/history/session'
-import { canUndo, liveState, resetStates, setSlotLoader } from '../../src/history/stack'
+import {
+    canUndo,
+    liveState,
+    loadedStates,
+    resetStates,
+    setSlotLoader,
+    undoState,
+} from '../../src/history/stack'
 import type { State } from '../../src/state'
 import type { Bgm } from '../../src/state/bgm'
 import { emptyStore } from '../helpers/emptyStore'
@@ -151,4 +158,36 @@ test('a file for a BGM that is loaded already changes nothing', () => {
     assert.equal(liveState.value.bgm.buffer, buffer)
     assert.equal(canUndo.value, false)
     assert.deepEqual(stored, [])
+})
+
+test('undo slots keep decoded audio only while the cache holds it, and get it back from their bytes', async () => {
+    const decodes: string[] = []
+    configureHeldBgm({
+        // The store lacks every file: what a slot gets back comes from the bytes it kept.
+        read: () => Promise.resolve(undefined),
+        decode: (data) => {
+            const hash = new TextDecoder().decode(data)
+            decodes.push(hash)
+            return Promise.resolve({ buffer: { decoded: hash } as unknown as AudioBuffer })
+        },
+    })
+    const hashes = ['a', 'b', 'c', 'd', 'e']
+    for (const hash of hashes) applyPick(picked(hash), session.value.sessionId, operation)
+    await settleHeldBgm()
+    const held = loadedStates().flatMap(({ state }) =>
+        state.bgm.buffer ? [state.bgm.meta?.hash] : [],
+    )
+    assert.deepEqual([...new Set(held)].sort(), ['c', 'd', 'e'])
+    // Every slot still names its BGM and keeps its bytes.
+    assert.deepEqual(
+        loadedStates().map(({ state }) => [state.bgm.meta?.hash, !!state.bgm.source]),
+        [[undefined, false], ...hashes.map((hash) => [hash, true])],
+    )
+    for (let i = 0; i < 4; i++) {
+        undoState()
+        await settleHeldBgm()
+    }
+    assert.equal(liveState.value.bgm.meta?.hash, 'a')
+    assert.deepEqual(liveState.value.bgm.buffer, { decoded: 'a' })
+    assert.deepEqual(decodes, ['b', 'a'])
 })
