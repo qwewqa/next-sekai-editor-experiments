@@ -15,6 +15,7 @@ import {
     canUndo,
     liveState,
     loadedStates,
+    redoState,
     resetStates,
     setSlotLoader,
     undoState,
@@ -238,4 +239,38 @@ test('a file held decoded comes back with its waveform from the cache', async ()
         Promise.reject(new Error('unused')),
     )
     assert.equal(again.waveform, first.waveform)
+})
+
+test('Undo and Redo onto audio decoded again keep the waveform the slot has, drawing none', async () => {
+    let drawn = 0
+    configureHeldBgm({
+        read: () => Promise.resolve(undefined),
+        decode: (data, waveform) => {
+            if (waveform) drawn++
+            const hash = new TextDecoder().decode(data)
+            return Promise.resolve({
+                buffer: { decoded: hash } as unknown as AudioBuffer,
+                ...(waveform ? { waveform: { kind: 'volume', images: [hash], style: {} } } : {}),
+            })
+        },
+    })
+    const waveforms = new Map<string, unknown>()
+    for (const hash of ['a', 'b', 'c', 'd']) {
+        const waveform = { kind: 'volume' as const, images: [hash], style: {} }
+        waveforms.set(hash, waveform)
+        applyPick({ ...picked(hash), waveform }, session.value.sessionId, operation)
+    }
+    for (let cycle = 0; cycle < 3; cycle++) {
+        for (let i = 0; i < 3; i++) {
+            undoState()
+            await settleHeldBgm()
+        }
+        assert.equal(liveState.value.bgm.waveform, waveforms.get('a'))
+        for (let i = 0; i < 3; i++) {
+            redoState()
+            await settleHeldBgm()
+        }
+        assert.equal(liveState.value.bgm.waveform, waveforms.get('d'))
+    }
+    assert.equal(drawn, 0)
 })

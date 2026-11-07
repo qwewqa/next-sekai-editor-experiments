@@ -26,8 +26,11 @@ export type HeldParts = { buffer: AudioBuffer; waveform?: Waveform; source: Arra
 export type HeldEnvironment = {
     /** The stored bytes, whole, or undefined when the store lacks them. Rejects when it could not look. */
     read: (hash: string, size: number | undefined) => Promise<ArrayBuffer | undefined>
-    /** Decodes bytes and builds their waveform. The bytes are detached by it. */
-    decode: (data: ArrayBuffer) => Promise<{ buffer: AudioBuffer; waveform?: Waveform }>
+    /** Decodes bytes, and builds their waveform when `waveform` is true. The bytes are detached by it. */
+    decode: (
+        data: ArrayBuffer,
+        waveform: boolean,
+    ) => Promise<{ buffer: AudioBuffer; waveform?: Waveform }>
     /** Stores a picked item again (`storeMedia`). */
     store?: (item: BatchMedia) => Promise<boolean>
     /** Whether the startup gate is still open: a reattachment that begins then is startup's. */
@@ -349,12 +352,17 @@ type Fetch = { stored: Promise<StoredStatus>; parts: Promise<HeldParts | undefin
 type Read = { kind: 'bytes'; bytes: ArrayBuffer } | { kind: 'absent' } | { kind: 'failed' }
 
 /** The stored bytes of a hash, read and decoded once; the result is cached while its session lasts. */
-const fetchHeld = (hash: string, size: number | undefined, held?: ArrayBuffer): Fetch => {
+const fetchHeld = (
+    hash: string,
+    size: number | undefined,
+    kept: Pick<Bgm, 'source' | 'waveform'> = {},
+): Fetch => {
     const known = fetching.get(hash)
     if (known) return known
     const env = environment
     const started = session.value.sessionId
     // A slot that kept its bytes is decoded from them: no read, and storage need not hold them.
+    const held = kept.source
     const read: Promise<Read> = held
         ? Promise.resolve({ kind: 'bytes', bytes: held.slice(0) })
         : env
@@ -373,9 +381,11 @@ const fetchHeld = (hash: string, size: number | undefined, held?: ArrayBuffer): 
             if (result.kind !== 'bytes' || !env || refused.has(hash)) return
             try {
                 const source = held ?? result.bytes.slice(0)
-                const decoded = await env.decode(result.bytes)
+                // A slot's waveform is kept with it: drawing another would hold both.
+                const decoded = await env.decode(result.bytes, !kept.waveform)
                 const parts: HeldParts = {
                     ...decoded,
+                    ...(kept.waveform ? { waveform: kept.waveform } : {}),
                     source,
                 }
                 // A session that changed meanwhile has cleaned up its waveforms.
@@ -434,7 +444,7 @@ const reattach = async (id: string, bgm: Bgm, moved: boolean, startup: boolean) 
         attachHeld(id, meta.hash, cached)
         return
     }
-    const fetch = fetchHeld(meta.hash, meta.size, bgm.source)
+    const fetch = fetchHeld(meta.hash, meta.size, bgm)
     const stored = await fetch.stored
     if (stored === 'absent') {
         const live = liveState.value.bgm
@@ -533,13 +543,14 @@ watch(() => (liveState.value as State | undefined)?.bgm.buffer, releaseUnheld)
 export const cachedHashes = () => [...cache.keys()]
 
 /** Decodes bytes as Choose Audio… does, without its dialog: the environment's `decode` in the page. */
-export const decodeBgmData = async (data: ArrayBuffer) => {
+export const decodeBgmData = async (data: ArrayBuffer, drawn = true) => {
     const [{ loadBgm }, { settings }, { createWaveform }] = await Promise.all([
         import('../../player'),
         import('../../settings'),
         import('../../waveform'),
     ])
     const buffer = await loadBgm(data)
+    if (!drawn) return { buffer }
     const waveform = await createWaveform(buffer, settings.waveform)
     return { buffer, ...(waveform ? { waveform } : {}) }
 }
