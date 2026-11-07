@@ -1,6 +1,12 @@
 import type { CSSProperties } from 'vue'
 import { timeout } from './utils/promise'
-import { createSpectrumSampler, FFT_BINS, FFT_ROWS_PER_SECOND } from './waveform/fft'
+import {
+    createSpectrumSampler,
+    FFT_BINS,
+    FFT_CONTRAST,
+    FFT_OPACITY,
+    FFT_ROWS_PER_SECOND,
+} from './waveform/fft'
 import { createWaveformTileBlob } from './waveform/png'
 import {
     createWaveformTilePixels,
@@ -11,6 +17,8 @@ import {
 export type Waveform = {
     images: string[]
     style: CSSProperties
+    /** Drawing opacity; the renderer's default when absent. */
+    opacity?: number
 }
 
 export const waveformDuration = 10
@@ -63,6 +71,7 @@ export const createWaveform = async (
     return {
         images,
         style,
+        ...(type === 'fft' && { opacity: FFT_OPACITY }),
     }
 }
 
@@ -103,6 +112,7 @@ const createPixelsFFT = async (buffer: AudioBuffer, checkCancelled: () => void) 
         // Pixel centers represent the centers of their 5 ms audio intervals.
         // Overlapping windows also include transients between adjacent rows.
         sample(((y + 0.5) * buffer.sampleRate) / pps, row)
+        for (let x = 0; x < w; x++) row[x] = FFT_CONTRAST[row[x] ?? 0] ?? 0
         pixels.set(row, y * w)
         // Bound foreground work by elapsed time, rather than a fixed number of
         // transforms that can become expensive on slower machines.

@@ -3,6 +3,18 @@ export const FFT_BINS = 128
 export const FFT_ONSET_BINS = 4
 export const FFT_FREQUENCY_BINS = FFT_BINS - FFT_ONSET_BINS
 export const FFT_ROWS_PER_SECOND = 200
+export const FFT_OPACITY = 0.45
+
+/**
+ * Maps spectrum bytes to tile alpha drawn at FFT_OPACITY. With b the byte as a
+ * fraction, the drawn alpha is 0.25 b + 0.20 b^3: quiet levels keep the linear
+ * 0.25 b, and loud passages gain contrast, so attacks within them stand out.
+ * Rounding up keeps every level at least as visible as 0.25 b.
+ */
+export const FFT_CONTRAST = Uint8Array.from({ length: 256 }, (_, i) => {
+    const b = i / 255
+    return Math.min(255, Math.ceil(((0.25 * b + 0.2 * b ** 3) / FFT_OPACITY) * 255))
+})
 
 const spectrumSize = FFT_SIZE / 2 + 1
 const window = Float64Array.from(

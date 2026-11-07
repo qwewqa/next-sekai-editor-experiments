@@ -118,7 +118,7 @@ export const createWaveformRenderer = (invalidate: () => void) => {
             // reduction is chosen at exact zoom boundaries in some browsers.
             const tilePixels = waveformDuration * Math.abs(ups * ctx.getTransform().d)
             ctx.save()
-            ctx.globalAlpha = 0.25
+            ctx.globalAlpha = waveform.opacity ?? 0.25
             ctx.translate(0, offset * -ups)
             ctx.scale(4, waveformDuration * -ups)
             for (let index = min; index <= max; index++) {

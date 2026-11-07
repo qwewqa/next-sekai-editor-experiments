@@ -171,3 +171,17 @@ test('visible waveform tiles remain resident when their working set exceeds the 
     assert.equal(images[0]!.onload, null, 'scrolling releases excess tiles from the old frame')
     assert.equal(images.filter((image) => image.onload !== null).length, 4)
 })
+
+test('waveforms draw at their own opacity, or 0.25 without one', (t) => {
+    const { renderer, waveform, images, context, ctx } = fixture(t)
+    const alphas: number[] = []
+    Object.defineProperty(ctx, 'globalAlpha', {
+        configurable: true,
+        set: (value: number) => alphas.push(value),
+        get: () => alphas.at(-1) ?? 1,
+    })
+    renderer.draw(context, waveform, 0, { min: 0, max: 9 })
+    images[0]!.load()
+    renderer.draw(context, { ...waveform, opacity: 0.45 }, 0, { min: 0, max: 9 })
+    assert.deepEqual(alphas, [0.25, 0.45])
+})

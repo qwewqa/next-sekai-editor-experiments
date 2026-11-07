@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createSpectrumSampler, FFT_BINS, FFT_ONSET_BINS, FFT_SIZE } from '../../src/waveform/fft'
+import {
+    createSpectrumSampler,
+    FFT_BINS,
+    FFT_CONTRAST,
+    FFT_ONSET_BINS,
+    FFT_OPACITY,
+    FFT_SIZE,
+} from '../../src/waveform/fft'
 
 const sampleRate = 44100
 const tone = (frequency: number, amplitude = 0.2, length = FFT_SIZE * 4) =>
@@ -241,4 +248,18 @@ test('nonfinite audio samples cannot poison neighboring valid samples', () => {
     }
     assert.deepEqual(sample([input]), sample([sanitized]))
     assert.ok(energy(sample([input])) > 0)
+})
+
+test('the FFT contrast table follows 0.25 b + 0.20 b^3 and never dims a level below 0.25 b', () => {
+    const step = FFT_OPACITY / 255
+    for (let i = 0; i < 256; i++) {
+        const b = i / 255
+        const drawn = (FFT_CONTRAST[i]! / 255) * FFT_OPACITY
+        const curve = 0.25 * b + 0.2 * b ** 3
+        assert.ok(drawn >= 0.25 * b - 1e-12, `level ${i} is at least as visible as before`)
+        assert.ok(drawn >= curve - 1e-12 && drawn < curve + step, `level ${i} follows the curve`)
+        if (i) assert.ok(FFT_CONTRAST[i]! >= FFT_CONTRAST[i - 1]!, `level ${i} is monotonic`)
+    }
+    assert.equal(FFT_CONTRAST[0], 0, 'silence stays transparent')
+    assert.equal(FFT_CONTRAST[255], 255, 'full scale draws at the full FFT opacity')
 })

@@ -164,6 +164,7 @@ for (const { mode, duration, missingSuspend } of [
                 filename,
                 duration: buffer?.duration,
                 images: waveform?.images.length ?? 0,
+                opacity: waveform?.opacity,
                 visiblePixels,
                 dimensions,
                 mode: window.editorTest.settings.waveform,
@@ -177,6 +178,9 @@ for (const { mode, duration, missingSuspend } of [
         } else {
             expect(result.images).toBe(1)
             expect(result.visiblePixels).toBeGreaterThan(0)
+            expect(result.opacity, 'FFT draws stronger than Volume').toBe(
+                mode === 'fft' ? 0.45 : undefined,
+            )
             if (mode === 'fft') {
                 expect(result.dimensions).toEqual([{ width: 128, height: 2000 }])
             }
