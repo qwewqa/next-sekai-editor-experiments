@@ -14,10 +14,14 @@ export const initialLifeInput = (before: number, after: number) =>
 export const bgmOffsetInput = (before: number, after: number) =>
     ({ id: 'nse.header.set', data: { field: 'bgmOffset', before, after } }) as const
 
-export type BgmParts = { buffer?: unknown; filename?: string; offset: number }
+export type BgmParts = { buffer?: unknown; waveform?: unknown; filename?: string; offset: number }
 
 export const bgmInput = (old: BgmParts, next: BgmParts): NativeOperationInput => {
-    if (next.buffer === old.buffer && next.filename === old.filename)
+    if (
+        next.buffer === old.buffer &&
+        next.waveform === old.waveform &&
+        next.filename === old.filename
+    )
         return bgmOffsetInput(old.offset, next.offset)
     return {
         id: 'nse.bgm.change',

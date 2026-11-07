@@ -576,6 +576,52 @@ test('closing completed BGM drafts releases only URLs that were never committed'
     expect(result.width).toBe(128)
 })
 
+test('the file picked again is no step until the setting draws another waveform, which it then applies', async ({
+    page,
+}) => {
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(trackWaveformTiles, 0)
+    const dialogs = page.getByRole('dialog')
+    const pick = async () => {
+        await page.keyboard.press('m')
+        const file = dialogs.locator('input[type="button"]')
+        const chooser = page.waitForEvent('filechooser')
+        await file.click()
+        await (
+            await chooser
+        ).setFiles({ name: 'again.wav', mimeType: 'audio/wav', buffer: wav(0.021) })
+        await expect(file).toHaveValue(/^00:/)
+        await expect(dialogs).toHaveCount(1)
+        await dialogs.getByRole('button', { name: 'Confirm', exact: true }).click()
+        await expect(dialogs).toHaveCount(0)
+        return page.evaluate(() => {
+            const { history } = window.editorTest
+            const { bgm } = history.state.value
+            Reflect.set(window, 'lastStep', Reflect.get(window, 'step'))
+            Reflect.set(window, 'step', history.headStep.value)
+            return {
+                newStep: Reflect.get(window, 'lastStep') !== history.headStep.value,
+                images: bgm.waveform?.images ?? [],
+                kind: bgm.waveform?.kind,
+                created: window.bgmImportGate.created.length,
+                revoked: window.bgmImportGate.revoked.length,
+            }
+        })
+    }
+    await page.evaluate(() => (window.editorTest.settings.waveform = 'off'))
+    expect(await pick()).toMatchObject({ newStep: true, images: [], created: 0 })
+    expect(await pick()).toMatchObject({ newStep: false, images: [], created: 0 })
+    // The setting now draws FFT: the pick brings that waveform, as a step.
+    await page.evaluate(() => (window.editorTest.settings.waveform = 'fft'))
+    const drawn = await pick()
+    expect(drawn).toMatchObject({ newStep: true, kind: 'fft', created: 1, revoked: 0 })
+    // Picked again, it keeps that waveform and draws none.
+    const again = await pick()
+    expect(again).toMatchObject({ newStep: false, images: drawn.images, created: 1, revoked: 0 })
+})
+
 test('a loaded BGM offset shows in milliseconds without floating point noise', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()

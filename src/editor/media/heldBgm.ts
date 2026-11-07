@@ -12,7 +12,7 @@ import type { BatchMedia } from '../../local/flushWrite'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import { TaskFailure } from '../../utils/error'
-import { releaseWaveform, type Waveform } from '../../waveform'
+import { commitWaveform, releaseWaveform, type Waveform } from '../../waveform'
 import type { NoticeLine } from '../notification'
 
 // The BGMs this tab holds, one `Bgm` per hash. A state read from storage names its audio by hash
@@ -232,6 +232,7 @@ const releaseUnheld = () => {
 
 /** Puts a hash's parts in the cache, the most recently used; the oldest goes, never the live head's. */
 export const cacheHeld = (hash: string, parts: HeldParts) => {
+    commitWaveform(parts.waveform)
     cache.delete(hash)
     cache.set(hash, parts)
     const live = liveHash()
@@ -253,17 +254,22 @@ export const cachedHeld = (hash: string) => {
 }
 
 /**
- * A picked file's audio and bytes, held once however often it is picked: the cache's when it holds
- * the file's hash; else `decode`'s, with the bytes an undo slot keeps for the hash, or else the
- * bytes captured at the pick.
+ * A picked file's audio and bytes, held once however often it is picked: the cache's, with its
+ * waveform, when it holds the file's hash; else `decode`'s, with the bytes an undo slot keeps for
+ * the hash, or else the bytes captured at the pick.
  */
 export const heldOrDecoded = async (
     hash: string,
     source: ArrayBuffer,
     decode: () => Promise<AudioBuffer>,
-): Promise<{ buffer: AudioBuffer; source: ArrayBuffer }> => {
+): Promise<{ buffer: AudioBuffer; source: ArrayBuffer; waveform?: Waveform }> => {
     const held = cachedHeld(hash)
-    if (held) return { buffer: held.buffer, source: held.source }
+    if (held)
+        return {
+            buffer: held.buffer,
+            source: held.source,
+            ...(held.waveform ? { waveform: held.waveform } : {}),
+        }
     const kept = loadedStates().find(
         ({ state }) => state.bgm.meta?.hash === hash && state.bgm.source,
     )

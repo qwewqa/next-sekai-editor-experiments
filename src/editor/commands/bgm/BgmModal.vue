@@ -37,12 +37,13 @@ let ownedWaveform: Waveform | undefined
 // Whether a file was picked here: the dialog then shows that file, not the live BGM.
 const picked = ref(false)
 
-// The live BGM may get its audio while this is open (it is read back from storage after a
-// reload). The dialog takes it, so confirming does not drop the audio.
+// The live BGM may get its audio or its waveform while this is open (it is read back from storage
+// after a reload). The dialog takes them, so confirming does not drop them.
 watch(
     () => liveState.value.bgm,
     (live) => {
-        if (picked.value || !live.buffer || live.meta !== props.bgm.meta || model.buffer) return
+        if (picked.value || !live.buffer || live.meta !== props.bgm.meta) return
+        if (model.buffer && model.buffer !== live.buffer) return
         model.buffer = live.buffer
         model.source = live.source
         model.waveform = live.waveform

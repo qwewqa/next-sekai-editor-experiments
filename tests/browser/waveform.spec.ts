@@ -35,6 +35,7 @@ test('5 ms waveform attacks survive minimum zoom and fractional scrolling', asyn
             }
             sourceContext.putImageData(pixels, 0, 0)
             const waveform = {
+                kind: 'volume' as const,
                 images: [source.toDataURL()],
                 style: { imageRendering: 'pixelated' as const },
             }
@@ -90,6 +91,7 @@ test('waveform zoom reuses reductions and returns to the original raster when en
         sourceContext.fillStyle = '#fff'
         sourceContext.fillRect(0, 101, 4, 1)
         const waveform = {
+            kind: 'volume' as const,
             images: [source.toDataURL()],
             style: { imageRendering: 'pixelated' as const },
         }
@@ -200,6 +202,7 @@ test('waveform attacks survive fractional DPR and downward backing-size rounding
             sourceContext.fillStyle = '#fff'
             sourceContext.fillRect(0, row, 4, 1)
             const waveform = {
+                kind: 'volume' as const,
                 images: [source.toDataURL()],
                 style: { imageRendering: 'pixelated' as const },
             }

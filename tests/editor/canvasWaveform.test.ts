@@ -52,6 +52,7 @@ const fixture = (t: TestContext) => {
     }
     const renderer = createWaveformRenderer(() => invalidations++)
     const waveform: Waveform = {
+        kind: 'volume',
         images: Array.from({ length: 40 }, (_, index) => `tile-${index}`),
         style: { imageRendering: 'pixelated' },
     }

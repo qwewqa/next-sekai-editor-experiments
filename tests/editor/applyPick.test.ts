@@ -230,3 +230,12 @@ test('a file picked again after the cache let it go is decoded, with the bytes i
     assert.equal(again.buffer, decoded)
     assert.equal(again.source, first.source)
 })
+
+test('a file held decoded comes back with its waveform from the cache', async () => {
+    const first = { ...picked('a'), waveform: { kind: 'volume', images: ['tile'], style: {} } }
+    applyPick(first as PickedBgm, session.value.sessionId, operation)
+    const again = await heldOrDecoded('a', new TextEncoder().encode('a').buffer, () =>
+        Promise.reject(new Error('unused')),
+    )
+    assert.equal(again.waveform, first.waveform)
+})

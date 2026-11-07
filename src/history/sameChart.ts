@@ -37,6 +37,7 @@ const sameHeader = (a: State, b: State) => {
     if (
         a.bgm.filename !== b.bgm.filename ||
         a.bgm.buffer !== b.bgm.buffer ||
+        a.bgm.waveform !== b.bgm.waveform ||
         a.bgm.source !== b.bgm.source
     )
         return false

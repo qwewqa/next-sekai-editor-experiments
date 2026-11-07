@@ -79,13 +79,19 @@ async function* load(
 
     yield () => i18n.value.commands.bgm.modal.decoding
 
-    const { buffer, source } = await heldOrDecoded(captured.meta.hash, captured.source, () =>
-        loadBgm(data),
-    )
+    const {
+        buffer,
+        source,
+        waveform: held,
+    } = await heldOrDecoded(captured.meta.hash, captured.source, () => loadBgm(data))
     check()
     const durationMs = durationMsOf(buffer.duration)
     const meta = { ...captured.meta, ...(durationMs === undefined ? {} : { durationMs }) }
     if (!drawn) return { filename: getFilename(file), buffer, source, meta }
+
+    // A file held already keeps its waveform, unless the setting now draws another kind.
+    if (held && (settings.waveform === 'off' || settings.waveform === held.kind))
+        return { filename: getFilename(file), buffer, waveform: held, source, meta }
 
     yield () => i18n.value.commands.bgm.modal.generating
     await timeout(50)

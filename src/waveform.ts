@@ -15,6 +15,8 @@ import {
 } from './waveform/tiles'
 
 export type Waveform = {
+    /** What the setting drew it as. */
+    kind: 'fft' | 'volume'
     images: string[]
     style: CSSProperties
     /** Drawing opacity; the renderer's default when absent. */
@@ -69,15 +71,25 @@ export const createWaveform = async (
     for (const url of images) createdUrls.add(url)
 
     return {
+        kind: type,
         images,
         style,
         ...(type === 'fft' && { opacity: FFT_OPACITY }),
     }
 }
 
+/** The waveforms chart history holds: kept until the chart is reset, however often reused. */
+const committed = new WeakSet<Waveform>()
+
+/** Marks a waveform as chart history's, so no draft release frees it. */
+export const commitWaveform = (waveform: Waveform | undefined) => {
+    if (waveform) committed.add(waveform)
+}
+
 // Only drafts owned by the importing modal are released individually. Committed
 // waveforms remain available to undo history until the chart is reset.
 export const releaseWaveform = (waveform: Waveform | undefined) => {
+    if (waveform && committed.has(waveform)) return
     for (const url of waveform?.images ?? []) {
         if (createdUrls.delete(url)) {
             URL.revokeObjectURL(url)

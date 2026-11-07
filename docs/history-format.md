@@ -584,7 +584,7 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 
 **`nse.bgm.change`** `{file: {before, after: NameText | null}, offset?: {before, after}}` (the file name without extension; `offset` only when it changed).
 
-- *Produced by:* the BGM dialog and `changeBgm` (Open of an audio file) and Choose Audio (the "Choose Audio…" notice actions) with a file other than the one the state names, when the buffer or file name changed; otherwise the same action gives `nse.header.set`. Re-picking the same bytes is not a no-op. Every pick decodes a new buffer and `sameChart` compares it by identity, so the step has equal names.
+- *Produced by:* the BGM dialog and `changeBgm` (Open of an audio file) and Choose Audio (the "Choose Audio…" notice actions) with a file other than the one the state names, when the buffer, waveform or file name changed; otherwise the same action gives `nse.header.set`. A file the tab still holds decoded (one of the last three BGMs it used) is picked as that buffer and waveform, so re-picking it with the same offset and name is no step. It is a step, with equal names, only when the Waveform Visualization setting now draws another kind and the pick brings that waveform.
 - *Apply:* replaces `state.bgm` (name, buffer, waveform, bytes, metadata, offset).
 - *Step Details:* "Changed BGM" (with `offset`) or "Changed BGM file"; a "File" change row, or a value row when both names are equal; an "Offset (ms)" row when stored; a missing name reads "Not set". Never grouped.
 

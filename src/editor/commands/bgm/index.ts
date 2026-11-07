@@ -64,6 +64,7 @@ export const changeBgm = async (file?: File) => {
         const old = currentBgm.value
         if (
             newBgm.buffer === old.buffer &&
+            newBgm.waveform === old.waveform &&
             newBgm.offset === old.offset &&
             newBgm.filename === old.filename
         )
@@ -79,7 +80,7 @@ export const changeBgm = async (file?: File) => {
             // Undo and Redo across this change land with its audio.
             cacheBgm(newBgm)
             notify(() => operation.fallback.text)
-        }
+        } else if (newBgm.waveform !== old.waveform) releaseWaveform(newBgm.waveform)
     } finally {
         guard.dispose()
     }
