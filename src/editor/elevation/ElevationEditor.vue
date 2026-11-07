@@ -603,8 +603,8 @@ let drag:
           fixedLeft: boolean
           movingEdge: number
           // A move's lane shifts the lane limit allows its notes as one group, and the note, if
-          // only one, that it also fits alone. A resize of several notes has the shifts of their
-          // moving edges, as the chart's.
+          // only one, that it also fits alone. A resize has the shifts of its moving edges, as the
+          // chart's.
           shifts?: LaneShifts
           lone?: NoteEntity
           // Raw pointer lane delta, and each resized note's result.
@@ -1145,12 +1145,12 @@ const controls: Pick<
             origin: getElevationStageProps(row.note.stageId, elevationBeat.value).gridOffset,
             composed: !!getComposedLayout(state.value),
         }
-        // As the chart's, the notes whose lanes move shift as one group, and several resized
-        // notes' moving edges do; an attached row moves only elevations.
+        // As the chart's, the notes whose lanes move shift as one group, and resized notes'
+        // moving edges do; an attached row moves only elevations.
         const lanes = drag.targets.filter((note) => getNoteFieldsIn(state.value.store, note).left)
         if (drag.resizing) {
             const fixedLeft = drag.fixedLeft
-            if (lanes.length > 1)
+            if (lanes.length)
                 drag.shifts = getEdgeShifts(
                     lanes.map((note) => note.left + (fixedLeft ? note.size : 0)),
                 )

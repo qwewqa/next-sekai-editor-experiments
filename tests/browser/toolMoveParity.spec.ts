@@ -571,14 +571,16 @@ const resizes = {
 } as const
 
 for (const family of Object.keys(resizes) as (keyof typeof resizes)[]) {
-    test(`${family}: a tool edge resize applies lane limits once something moves, as Select's does`, async ({
+    test(`${family}: a tool edge resize of an object past lane limits leaves its overflow and moves its edge only inward, as Select's does`, async ({
         page,
     }) => {
         const { value, press } = resizes[family]
+        // A vertical drag and an outward one change nothing; an inward one moves the edge.
         for (const [dx, beats, moves] of [
             [0, 0.45, false],
-            [0, 2, true],
-            [0.6, 0, true],
+            [0, 2, false],
+            [0.6, 0, false],
+            [-0.6, 0, true],
         ] as const) {
             const results = []
             for (const tool of [family, 'select'] as const) {

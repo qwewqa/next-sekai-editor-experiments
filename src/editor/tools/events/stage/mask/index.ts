@@ -42,7 +42,7 @@ import {
     yToValidBeat,
 } from '../../../../view'
 import SelectionPropertiesModal from '../../../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved, constrainResized } from '../../../toolMove'
+import { constrainMoved, limitResize } from '../../../toolMove'
 import {
     commitDrop,
     isRangeResizeStart,
@@ -296,7 +296,7 @@ export const stageMaskEvent: Tool = {
             case 'edit': {
                 view.entities = {
                     hovered: [],
-                    creating: [toStageMaskEventJointEntity(toResizedObject(active, x, y))],
+                    creating: [toStageMaskEventJointEntity(toResizedObject(active, x))],
                 }
                 break
             }
@@ -353,7 +353,7 @@ export const stageMaskEvent: Tool = {
                 break
             }
             case 'edit': {
-                commitDrop(edit, active.entity, toResizedObject(active, x, y))
+                commitDrop(edit, active.entity, toResizedObject(active, x))
                 break
             }
             case 'move': {
@@ -383,27 +383,21 @@ const toResizedObject = (
         pressLane: number
     },
     x: number,
-    y: number,
 ) => {
     const { entity } = resizing
-    const lane = xToLane(x)
     const edge = entity.maskLeft + (resizing.lane === entity.maskLeft ? entity.maskSize : 0)
+    const limited = limitResize(edge, xToLane(x) - resizing.pressLane)
     const [maskLeft, maskSize] = resize(
         resizing.lane,
-        edge + (lane - resizing.pressLane),
+        limited.lane,
         0,
         Number.POSITIVE_INFINITY,
         edge,
         [entity.maskLeft, entity.maskSize],
+        undefined,
+        limited.shift,
     )
-    return constrainResized(
-        { ...entity, maskLeft, maskSize },
-        entity.beat,
-        resizing.pressBeat,
-        resizing.pressLane,
-        lane,
-        y,
-    )
+    return { ...entity, maskLeft, maskSize }
 }
 
 // Moves by the pointer's snapped movement, as Select does.

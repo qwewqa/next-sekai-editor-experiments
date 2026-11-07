@@ -171,9 +171,9 @@ export type MovePlan = {
     // Whether the anchor's stage lattice moved there, so absolute lane snapping can't wait.
     latticeMoved: boolean
     // Once the move changes a lane or beat: the lane shifts the lane limit allows the objects whose
-    // lanes move, as one group, and the object, if only one, that it also fits alone. A resize of
-    // several objects has the shifts of their moving edges, which then take their sides from
-    // where the shift puts them, and none is fitted alone.
+    // lanes move, as one group, and the object, if only one, that it also fits alone. A resize has
+    // the shifts of its moving edges, which then take their sides from where the shift puts them,
+    // and none is fitted alone.
     shifts?: LaneShifts
     lone?: Entity
 }
@@ -985,12 +985,11 @@ const withLaneLimit = (
         return infos?.[0]?.note === note || infos?.at(-1)?.note === note
     }
     if (isSelectResize(active.onlyType, active.focus, active.lane)) {
-        // One resized object keeps its own limit.
         const resized = active.entities.filter((entity) =>
             movesLane(active.onlyType, entity, isSlideEnd),
         )
         const focus = laneSpanOf(active.focus)
-        if (resized.length < 2 || !focus) return plan
+        if (!resized.length || !focus) return plan
         const fixedLeft = active.lane >= (focus[0] + focus[1]) / 2
         const edges = resized.flatMap((entity) => {
             const edge = laneSpanOf(entity)?.[fixedLeft ? 1 : 0]

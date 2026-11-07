@@ -40,7 +40,7 @@ import {
     yToValidBeat,
 } from '../../../view'
 import SelectionPropertiesModal from '../../../workspace/properties/SelectionPropertiesModal.vue'
-import { constrainMoved, constrainResized } from '../../toolMove'
+import { constrainMoved, limitResize } from '../../toolMove'
 import {
     commitDrop,
     isRangeResizeStart,
@@ -297,7 +297,7 @@ export const cameraEvent: Tool = {
             case 'edit': {
                 view.entities = {
                     hovered: [],
-                    creating: [toCameraEventJointEntity(toResizedObject(active, x, y))],
+                    creating: [toCameraEventJointEntity(toResizedObject(active, x))],
                 }
                 break
             }
@@ -354,7 +354,7 @@ export const cameraEvent: Tool = {
                 break
             }
             case 'edit': {
-                commitDrop(edit, active.entity, toResizedObject(active, x, y))
+                commitDrop(edit, active.entity, toResizedObject(active, x))
                 break
             }
             case 'move': {
@@ -384,27 +384,21 @@ const toResizedObject = (
         pressLane: number
     },
     x: number,
-    y: number,
 ) => {
     const { entity } = resizing
-    const lane = xToLane(x)
     const edge = entity.cameraLeft + (resizing.lane === entity.cameraLeft ? entity.cameraSize : 0)
+    const limited = limitResize(edge, xToLane(x) - resizing.pressLane)
     const [cameraLeft, cameraSize] = resize(
         resizing.lane,
-        edge + (lane - resizing.pressLane),
+        limited.lane,
         6,
         24,
         edge,
         [entity.cameraLeft, entity.cameraSize],
+        undefined,
+        limited.shift,
     )
-    return constrainResized(
-        { ...entity, cameraLeft, cameraSize },
-        entity.beat,
-        resizing.pressBeat,
-        resizing.pressLane,
-        lane,
-        y,
-    )
+    return { ...entity, cameraLeft, cameraSize }
 }
 
 // Moves by the pointer's snapped movement, as Select does.

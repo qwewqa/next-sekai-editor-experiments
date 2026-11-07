@@ -182,7 +182,13 @@ test('a selection drag brings a group past the limit within it whole, with match
     expect((await notes(page)).map(({ left }) => left)).toEqual([0, 5])
 })
 
-type Seeded = { beat: number; left: number; size: number; isAttached?: boolean }
+type Seeded = {
+    beat: number
+    left: number
+    size: number
+    isAttached?: boolean
+    elevation?: number
+}
 
 /** Shows slides with every note selected, at a lane limit of 6. */
 const seedSlides = (page: Page, slides: Seeded[][]) =>
@@ -617,6 +623,190 @@ test('a selection resize leaves edges already past the limit there, and lets the
         { left: 17, size: 2 },
     ])
 })
+
+type Ranged = { beat: number; left: number; size: number }
+
+/** Shows a chart with dynamic stages, nothing selected, at a lane limit of 6. */
+const seedLayout = (
+    page: Page,
+    layout: 'basic' | 'composed',
+    {
+        slides = [],
+        cameras = [],
+        masks = [],
+    }: { slides?: Seeded[][]; cameras?: Ranged[]; masks?: Ranged[] },
+) =>
+    page.evaluate(
+        ({ layout, slides, cameras, masks }) => {
+            const { settings, fixtures, show, view } = window.editorTest
+            const base = fixtures.events
+            const note = fixtures.interaction.slides[0]![0]!
+            show(
+                {
+                    ...base,
+                    isDynamicStages: true,
+                    cameraEvents: cameras.map(({ beat, left, size }) => ({
+                        ...base.cameraEvents[0]!,
+                        beat,
+                        cameraLeft: left,
+                        cameraSize: size,
+                    })),
+                    stageMaskEvents: masks.map(({ beat, left, size }) => ({
+                        ...base.stageMaskEvents[0]!,
+                        beat,
+                        maskLeft: left,
+                        maskSize: size,
+                    })),
+                    stagePivotEvents: [],
+                    stageStyleEvents: [],
+                    stageTransformEvents: [],
+                    timeScales: [],
+                    slides: slides.map((slide) =>
+                        slide.map((n) => ({ ...note, ...n, isAttached: !!n.isAttached })),
+                    ),
+                },
+                3,
+            )
+            settings.maxLane = 6
+            view.layout = layout
+        },
+        { layout, slides, cameras, masks },
+    )
+
+const useTool = (page: Page, key: string, name: string, how: 'hotkey' | 'command') =>
+    how === 'hotkey'
+        ? page.keyboard.press(key)
+        : page.evaluate(async (name) => {
+              const { commands } = await import('/src/editor/commands/index.ts')
+              await commands[name as 'select'].execute()
+          }, name)
+
+for (const [key, name] of [
+    ['f', 'select'],
+    ['a', 'note'],
+    ['s', 'slide'],
+] as const) {
+    test(`a ${name} resize of one note moves only its dragged edge, which goes no further past the limit, by hotkey and command, in Basic and Composed`, async ({
+        page,
+    }) => {
+        for (const layout of ['basic', 'composed'] as const) {
+            for (const how of ['hotkey', 'command'] as const) {
+                const resized = async (note: Seeded, from: number, to: number) => {
+                    await seedLayout(page, layout, { slides: [[note]] })
+                    await useTool(page, key, name, how)
+                    const before = await placed(page)
+                    const preview = await dragChart(page, [from, 4], [to, 4])
+                    const after = await placed(page)
+                    if (JSON.stringify(after) !== JSON.stringify(before)) {
+                        expect(preview).toEqual(after)
+                        await page.keyboard.press('z')
+                        expect(await placed(page)).toEqual(before)
+                    }
+                    return after.map(({ left, size }) => ({ left, size }))
+                }
+                // Past the limit, the right edge comes one lane in; the left edge stays.
+                expect(await resized({ beat: 4, left: 8, size: 2 }, 9.95, 8.95)).toEqual([
+                    { left: 8, size: 1 },
+                ])
+                // Dragged out, it stays.
+                expect(await resized({ beat: 4, left: 8, size: 2 }, 9.95, 10.95)).toEqual([
+                    { left: 8, size: 2 },
+                ])
+                // The left edge of a note past the right side moves; its right edge stays.
+                expect(await resized({ beat: 4, left: 4, size: 6 }, 4.05, 5.05)).toEqual([
+                    { left: 5, size: 5 },
+                ])
+                // Inside, the dragged edge stops at the limit.
+                expect(await resized({ beat: 4, left: 0, size: 2 }, 1.95, 9)).toEqual([
+                    { left: 0, size: 6 },
+                ])
+            }
+        }
+    })
+}
+
+test('an Elevation Editor resize of one note moves only its dragged edge, which goes no further past the limit', async ({
+    page,
+}) => {
+    for (const layout of ['basic', 'composed'] as const) {
+        for (const [from, to, expected] of [
+            [9.95, 8.95, { left: 8, size: 1 }],
+            [9.95, 10.95, { left: 8, size: 2 }],
+        ] as const) {
+            await seedLayout(page, layout, {
+                slides: [[{ beat: 4, left: 8, size: 2, elevation: 1 }]],
+            })
+            await page.evaluate(async () => {
+                window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+                const { openElevationEditor } = await import('/src/editor/elevation/state.ts')
+                openElevationEditor(4)
+                await window.editorTest.nextTick()
+            })
+            await expect(page.locator('.elevation-canvas')).toBeVisible()
+            await page.keyboard.press('f')
+            await drag(page, await elevationPoint(page, from, 1), await elevationPoint(page, to, 1))
+            expect((await notes(page)).map(({ left, size }) => ({ left, size }))).toEqual([
+                expected,
+            ])
+            await page.keyboard.press('Escape')
+        }
+    }
+})
+
+for (const [key, name, type] of [
+    ['f', 'select', 'camera'],
+    ['f', 'select', 'mask'],
+    [undefined, 'cameraEvent', 'camera'],
+    [undefined, 'stageMaskEvent', 'mask'],
+] as const) {
+    test(`a ${name} resize of one ${type} past the limit moves only its dragged edge`, async ({
+        page,
+    }) => {
+        const ranges = async () =>
+            page.evaluate(() =>
+                [...window.editorTest.store.getAllEntities()].flatMap((entity) =>
+                    entity.type === 'cameraEventJoint'
+                        ? [{ left: entity.cameraLeft, size: entity.cameraSize }]
+                        : entity.type === 'stageMaskEventJoint'
+                          ? [{ left: entity.maskLeft, size: entity.maskSize }]
+                          : [],
+                ),
+            )
+        await seedLayout(page, 'basic', {
+            [type === 'camera' ? 'cameras' : 'masks']: [{ beat: 4, left: 2, size: 8 }],
+        })
+        if (key) await page.keyboard.press(key)
+        else
+            await page.evaluate(async (name) => {
+                const { switchToolTo } = await import('/src/editor/tools/index.ts')
+                switchToolTo(name)
+            }, name)
+        const start = await point(page, 2.1, 4)
+        const end = await point(page, 3.1, 4)
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(end.x, end.y, { steps: 5 })
+        await settle(page)
+        const preview = await page.evaluate(async () => {
+            const { getPreviewState } = await import('/src/preview/edit.ts')
+            // The event tools show a resize as a ghost; Select, as a preview of the chart.
+            const entity =
+                window.editorTest.view.entities.creating[0] ??
+                getPreviewState(window.editorTest.history.state.value).selectedEntities[0]!
+            return entity.type === 'cameraEventJoint'
+                ? { left: entity.cameraLeft, size: entity.cameraSize }
+                : entity.type === 'stageMaskEventJoint'
+                  ? { left: entity.maskLeft, size: entity.maskSize }
+                  : undefined
+        })
+        await page.mouse.up()
+        // The left edge comes one lane on; the right edge at 10 stays past the limit.
+        expect(await ranges()).toEqual([{ left: 3, size: 7 }])
+        expect(preview).toEqual({ left: 3, size: 7 })
+        await page.keyboard.press('z')
+        expect(await ranges()).toEqual([{ left: 2, size: 8 }])
+    })
+}
 
 test('a narrow custom limit keeps camera events valid and centered', async ({ page }) => {
     await seed(page)

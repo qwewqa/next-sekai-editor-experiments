@@ -300,7 +300,7 @@ export const slide: Tool = {
                 break
             }
             case 'edit': {
-                const object = toResizedNoteObject(active, x, y)
+                const object = toResizedNoteObject(active, x)
 
                 view.entities = {
                     hovered: [],
@@ -364,7 +364,7 @@ export const slide: Tool = {
                 break
             }
             case 'edit': {
-                commitDrop(edit, active.entity, toResizedNoteObject(active, x, y))
+                commitDrop(edit, active.entity, toResizedNoteObject(active, x))
                 break
             }
             case 'move': {
