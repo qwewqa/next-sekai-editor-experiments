@@ -151,7 +151,7 @@ test('a group shifts as one until its first edge reaches the limit', () => {
     assert.equal(laneShiftRange([], 6), undefined)
 })
 
-test('a group past the limit shifts back in whole, and one wider than the range keeps covering it', () => {
+test('a group past the limit shifts back in whole, and one wider than the range takes no edge further past it', () => {
     // From 0 to 7: any shift lands it within -6 to 6, at most one lane left of where it is.
     assert.deepEqual(
         laneShiftRange(
@@ -163,7 +163,7 @@ test('a group past the limit shifts back in whole, and one wider than the range 
         ),
         [-6, -1],
     )
-    // From -8 to 8: it moves only while it still covers -6 to 6.
+    // From -8 to 8, past both sides: it stays.
     assert.deepEqual(
         laneShiftRange(
             [
@@ -172,7 +172,30 @@ test('a group past the limit shifts back in whole, and one wider than the range 
             ],
             6,
         ),
-        [-2, 2],
+        [0, 0],
+    )
+    // From -4 to 10: it comes in until its left edge meets -6, and need not move at all,
+    // so a move in time alone keeps its lanes.
+    assert.deepEqual(
+        laneShiftRange(
+            [
+                [-4, -2],
+                [8, 10],
+            ],
+            6,
+        ),
+        [-2, 0],
+    )
+    // At the chart's bounds: the edge at -5000 stays, so no shift takes it past them.
+    assert.deepEqual(
+        laneShiftRange(
+            [
+                [-5000, -4998],
+                [4999, 5002],
+            ],
+            5000,
+        ),
+        [0, 0],
     )
 })
 

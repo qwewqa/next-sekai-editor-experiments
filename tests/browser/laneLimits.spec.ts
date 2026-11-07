@@ -383,6 +383,60 @@ test('a selection drag moves notes and events as one group', async ({ page }) =>
     expect(moved).toEqual([-2, 0, 6])
 })
 
+test('a selection drag takes no note of a group wider than the range further past the limit', async ({
+    page,
+}) => {
+    // Past both sides: the group stays.
+    await seedSlides(page, [[{ beat: 4, left: -8, size: 2 }], [{ beat: 8, left: 5, size: 3 }]])
+    await page.keyboard.press('f')
+    const both = await dragChart(page, [-7, 4], [-8, 4])
+    expect(both.map(({ left }) => left)).toEqual([-8, 5])
+    expect(await placed(page)).toEqual(both)
+    // Past one side: it comes in until its other edge meets the limit.
+    await seedSlides(page, [[{ beat: 4, left: -4, size: 2 }], [{ beat: 8, left: 8, size: 2 }]])
+    const one = await dragChart(page, [-3, 4], [-13, 4])
+    expect(one.map(({ left }) => left)).toEqual([-6, 6])
+    expect(await placed(page)).toEqual(one)
+})
+
+test('a beat-only drag keeps the lanes of a selection wider than a lowered limit', async ({
+    page,
+}) => {
+    // As charted before the limit was set to 6: the right side is past it.
+    await seedSlides(page, [
+        [{ beat: 4, left: -3, size: 2 }],
+        [{ beat: 6, left: 4, size: 2 }],
+        [{ beat: 8, left: 10, size: 2 }],
+    ])
+    await page.keyboard.press('f')
+    const preview = await dragChart(page, [-2, 4], [-2, 6])
+    expect(preview).toEqual([
+        { beat: 6, left: -3, size: 2 },
+        { beat: 8, left: 4, size: 2 },
+        { beat: 10, left: 10, size: 2 },
+    ])
+    expect(await placed(page)).toEqual(preview)
+})
+
+test('at the chart bounds, a drag of a group wider than the range shows what it commits', async ({
+    page,
+}) => {
+    await seedSlides(page, [
+        [{ beat: 4, left: -5000, size: 2 }],
+        [{ beat: 8, left: 4999, size: 3 }],
+    ])
+    await page.evaluate(() => {
+        const { settings, view } = window.editorTest
+        settings.maxLane = 5000
+        view.lane = -4999
+    })
+    await page.keyboard.press('f')
+    // A note at -5001 would be past the chart's bounds, and the edit would be refused.
+    const preview = await dragChart(page, [-4999, 4], [-5000, 4])
+    expect(preview.map(({ left }) => left)).toEqual([-5000, 4999])
+    expect(await placed(page)).toEqual(preview)
+})
+
 test('clicks and sub-threshold pointer movement leave existing out-of-range notes unchanged', async ({
     page,
 }) => {

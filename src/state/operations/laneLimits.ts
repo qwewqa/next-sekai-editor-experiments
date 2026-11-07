@@ -108,8 +108,9 @@ export const edgeShiftRange = (
 
 /**
  * The lane shifts that keep a group of spans within -maxLane to maxLane as one: from where its left edge
- * reaches the limit to where its right edge does. A group past the limit can only shift back in,
- * and one wider than the range only while it covers the range. Undefined without a limit or spans.
+ * reaches the limit to where its right edge does. A group past the limit can only shift back in.
+ * One wider than the range takes no edge further past the limit: it comes in until its other edge
+ * reaches the limit, and stays once past both. Undefined without a limit or spans.
  */
 export const laneShiftRange = (
     spans: Iterable<readonly [number, number]>,
@@ -125,5 +126,5 @@ export const laneShiftRange = (
     if (!(min <= max)) return
     const toLeft = -maxLane - min
     const toRight = maxLane - max
-    return toLeft <= toRight ? [toLeft, toRight] : [toRight, toLeft]
+    return toLeft <= toRight ? [toLeft, toRight] : [Math.min(0, toLeft), Math.max(0, toRight)]
 }
