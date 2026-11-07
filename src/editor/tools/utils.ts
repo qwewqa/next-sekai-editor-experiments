@@ -19,6 +19,7 @@ import { sceneState, toCommittedEntity } from '../sceneState'
 import { isEntityInScope, scopeLookup } from '../scope'
 import { snappedOffset } from '../snapping'
 import { alignLane, ups, view, viewBox, xToLane, yToTime, type Selection } from '../view'
+import { createPointMemo } from './pointMemo'
 import { extendSelectionToSlides } from './slideSelection'
 
 export { isNoteResizeStart, isRangeResizeStart, isSelectResize } from './edges'
@@ -179,7 +180,7 @@ export const pointHitsAt = (x: number, y: number, minimumNoteWidth = 1.5): Point
           )
 
 // The hover and the cursor ask for the same point each frame; they share one answer.
-let remembered: { key: unknown[]; hits: PointHits<never> } | undefined
+const pointMemo = createPointMemo<PointHits<never>>(state)
 const remember = <T extends Entity>(
     type: EntityType | undefined,
     x: number,
@@ -205,10 +206,7 @@ const remember = <T extends Entity>(
         scopeLookup.value,
         raisedToolChain.value,
     ]
-    if (remembered?.key.every((value, i) => value === key[i])) return remembered.hits
-    const hits = find()
-    remembered = { key, hits: hits as PointHits<never> }
-    return hits
+    return pointMemo(key, find as () => PointHits<never>)
 }
 
 /** A selected object in reach, as the set counts them. */
