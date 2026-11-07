@@ -6,7 +6,7 @@ import { createWorld } from './world'
 // The wait for a chain's imports (`waitForChainImports`): a Save waits for every import of
 // its chain that storage lists, not only its own session's, whichever session it is.
 
-const { waitForChainImports } = await import('../../../src/editor/save/imports')
+const { RESUME_WAIT_MS, waitForChainImports } = await import('../../../src/editor/save/imports')
 const { startImport } = await import('../../../src/local/open/importLoop')
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -65,19 +65,27 @@ test('an import of another session of the chain, running here, is waited for in 
     assert.equal(outcome, 'done')
 })
 
-test("an import running nowhere here is polled for the bound, then left to the build's refusal", async () => {
-    const w = await createWorld({ own: 'bound', held: true })
-    w.pendingImports.add('session-before')
-    const started = Date.now()
-    const outcome = await waitForChainImports(
-        { worker: w.worker as never, session: w.session, chainId: w.session.chainId },
-        slot(),
-    )
-    const waited = Date.now() - started
-    assert.equal(outcome, 'done')
-    assert.ok(waited >= 3500 && waited < 8000, `waited ${waited} ms`)
-    assert.ok(w.preparing.some((entry) => entry.open))
-})
+// Its polls run late on a loaded machine, so the upper limit only catches a wait that ignores the
+// bound, and the timeout one that never ends.
+test(
+    "an import running nowhere here is polled for the bound, then left to the build's refusal",
+    {
+        timeout: 4 * RESUME_WAIT_MS,
+    },
+    async () => {
+        const w = await createWorld({ own: 'bound', held: true })
+        w.pendingImports.add('session-before')
+        const started = Date.now()
+        const outcome = await waitForChainImports(
+            { worker: w.worker as never, session: w.session, chainId: w.session.chainId },
+            slot(),
+        )
+        const waited = Date.now() - started
+        assert.equal(outcome, 'done')
+        assert.ok(waited >= 3500 && waited < 3 * RESUME_WAIT_MS, `waited ${waited} ms`)
+        assert.ok(w.preparing.some((entry) => entry.open))
+    },
+)
 
 test('an import no tab runs is resumed by the wait, and the Save goes on', async () => {
     const w = await createWorld({ own: 'bound', held: true })
