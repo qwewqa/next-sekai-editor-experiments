@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 (2026-11-09)
+
 - Added Show Combo to Preview Settings and Settings › Preview.
 - Added Test Aspect Ratio to Preview Settings, Settings › Preview and Export Video.
 - Preview Settings now opens in the Preview panel when most of it fits. You can scroll to see the rest.
