@@ -27,7 +27,7 @@ test('the setting picks the theme, and System follows the device live', async ({
     await open(page)
     expect(await look(page)).toEqual({
         theme: 'light',
-        scheme: 'light',
+        scheme: 'light only',
         chart: light,
     })
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
@@ -37,7 +37,7 @@ test('the setting picks the theme, and System follows the device live', async ({
         .poll(() => look(page))
         .toEqual({
             theme: 'dark',
-            scheme: 'dark',
+            scheme: 'dark only',
             chart: dark,
         })
 
@@ -49,7 +49,7 @@ test('the setting picks the theme, and System follows the device live', async ({
     await page.evaluate(() => (window.editorTest.settings.theme = 'dark'))
     expect(await look(page)).toEqual({
         theme: 'dark',
-        scheme: 'dark',
+        scheme: 'dark only',
         chart: dark,
     })
 })
