@@ -53,8 +53,8 @@ export default defineConfig({
     use: {
         ...config.use,
         launchOptions: {},
-        // As in the main config: no startup guard question unless a spec tests the guard, and the
-        // agreement counts as given.
+        // As in the main config: no startup guard question unless a spec tests the guard, the
+        // agreement counts as given, and Write to Chosen Files starts Enabled.
         storageState: {
             cookies: [],
             origins: [String(config.use?.baseURL), previewUrl].map((origin) => ({
@@ -62,6 +62,7 @@ export default defineConfig({
                 localStorage: [
                     { name: 'nse.test.noOpeningGuard', value: 'true' },
                     { name: AGREEMENT_KEY, value: AGREED },
+                    { name: 'sonolus-next-sekai-editor.filePicker', value: '"enabled"' },
                 ],
             })),
         },

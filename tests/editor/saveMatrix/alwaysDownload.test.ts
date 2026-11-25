@@ -181,7 +181,7 @@ for (const [code, offered] of [
         )
         assert.ok(shown, 'a failure dialog shows')
         assert.equal(!!shown.download, offered)
-        assert.equal(w.filePicker.choice, 'auto')
+        assert.equal(w.filePicker.choice, 'enabled')
     })
 
 test('a build that fails before the picker opens does not offer Always Download', async () => {

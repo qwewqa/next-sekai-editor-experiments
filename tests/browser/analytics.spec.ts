@@ -599,6 +599,10 @@ test('a scripted visit counts each press once by name and source, and sends the 
     const { batches, stray } = await mock(context)
     const messages = watchConsole(page)
     await installAnalytics(page)
+    // Write to Chosen Files at its default, Auto: the config seeds Enabled.
+    await page.addInitScript(() => {
+        localStorage.removeItem('sonolus-next-sekai-editor.filePicker')
+    })
     await start(page)
     await interact(page)
     await page
@@ -637,7 +641,7 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(settings).toHaveProperty('previewShowCombo', false)
     expect(settings).toHaveProperty('groupsStagesSideBySide', 'auto')
     expect(settings).toHaveProperty('filePicker', 'auto')
-    expect(dataOf(first, 'visit')).toHaveProperty('filePicker', 'picker')
+    expect(dataOf(first, 'visit')).toHaveProperty('filePicker', 'autoDownload')
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
     expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })

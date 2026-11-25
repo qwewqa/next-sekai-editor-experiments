@@ -21,25 +21,13 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Write to Chosen Files: which browsers Auto gives the save picker, and the Settings row. The
-// client hints are stubbed before the page loads, over the OPFS pickers of the override.
+// Write to Chosen Files over the OPFS pickers of the override, and the Settings row. The config
+// seeds Enabled; the specs of Auto remove the setting before the page loads.
 
-type Hints = { platform: string; brand: string; version: string }
-
-const withHints = (page: Page, hints: Hints) =>
-    page.addInitScript((hints: Hints) => {
-        Object.defineProperty(Navigator.prototype, 'userAgentData', {
-            configurable: true,
-            get: () => ({
-                platform: hints.platform,
-                mobile: hints.platform === 'Android',
-                brands: [
-                    { brand: hints.brand, version: hints.version },
-                    { brand: 'Chromium', version: hints.version },
-                ],
-            }),
-        })
-    }, hints)
+const withAuto = (page: Page) =>
+    page.addInitScript(() => {
+        localStorage.removeItem('sonolus-next-sekai-editor.filePicker')
+    })
 
 /** The download a Save made, read as a project file. */
 const downloadedProject = async (download: Download) => {
@@ -54,10 +42,8 @@ const saveOnce = async (page: Page) => {
     await submitSave(page, 'coconut')
 }
 
-// The rule itself is unit-tested (tests/platform); this shows a real page reads the client hints:
-// without them, the desktop rule would give the picker.
-test('Auto: Google Chrome 150 on Android downloads', async ({ page }) => {
-    await withHints(page, { platform: 'Android', brand: 'Google Chrome', version: '150' })
+test('Auto downloads where the browser has the save picker', async ({ page }) => {
+    await withAuto(page)
     await start(page)
     const downloads: Download[] = []
     page.on('download', (download) => downloads.push(download))
@@ -68,7 +54,7 @@ test('Auto: Google Chrome 150 on Android downloads', async ({ page }) => {
     expect(await pickerCalls(page)).toEqual([])
 })
 
-test('Disabled downloads on desktop, and the picker returns with Auto', async ({ page }) => {
+test('Disabled downloads, and the picker returns with Enabled', async ({ page }) => {
     await page.addInitScript(() => {
         localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"disabled"')
     })
@@ -82,7 +68,7 @@ test('Disabled downloads on desktop, and the picker returns with Auto', async ({
     await page.evaluate(async () => {
         const { settings } =
             (await import('/src/settings.ts')) as typeof import('../../src/settings')
-        settings.filePicker = 'auto'
+        settings.filePicker = 'enabled'
     })
     await page.evaluate(async () => {
         const { saveAs } =
@@ -222,6 +208,7 @@ const openLocalData = (page: Page) =>
 test('Settings › Local Data offers Write to Chosen Files where the picker exists', async ({
     page,
 }) => {
+    await withAuto(page)
     await start(page)
     await openLocalData(page)
     const field = page.locator('#settings-localData [data-file-picker]')

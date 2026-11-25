@@ -26,6 +26,11 @@ import { levelDataDiskState } from '../../src/platform/fingerprint'
 import { createMockPlatform } from '../../src/platform/mock'
 import './saveMatrix/env'
 
+// Write to Chosen Files on Enabled, so the mock's save picker is offered. The editor's settings
+// load after the env's hooks.
+const { settings } = await import('../../src/settings')
+settings.filePicker = 'enabled'
+
 const gate = () => {
     let resolve!: () => void
     const promise = new Promise<void>((done) => {

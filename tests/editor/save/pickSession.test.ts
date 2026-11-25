@@ -14,6 +14,10 @@ const { assembleZip, prepareEntry } = await import('../../../src/zip')
 const { resetStates } = await import('../../../src/history/stack')
 const { chartState } = await import('../chartFixture')
 const { initialStep } = await import('../../helpers/historySteps')
+const { settings } = await import('../../../src/settings')
+
+// Write to Chosen Files on Enabled, so the mock's save picker is offered.
+settings.filePicker = 'enabled'
 
 const nxsp = async (revision: string) =>
     new Blob(

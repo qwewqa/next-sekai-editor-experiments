@@ -173,8 +173,8 @@ const createWorld = async (setup: Setup = {}) => {
         ...(s.platform === 'download' ? { capabilities: { writeBack: false } } : {}),
     })
     setPlatformForTests(mock)
-    // Write to Chosen Files, as the editor hands it to the platform: Auto until Always Download.
-    const filePicker = { choice: 'auto' as FilePickerChoice }
+    // Write to Chosen Files, as the editor hands it to the platform: Enabled until Always Download.
+    const filePicker = { choice: 'enabled' as FilePickerChoice }
     setFilePickerChoice(
         () => filePicker.choice,
         () => {

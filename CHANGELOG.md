@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- (Web) With Write to Chosen Files set to Auto, saves and exports are now downloaded in every browser.
+
 ## 0.6.0 (2026-11-09)
 
 - Added Show Combo to Preview Settings and Settings › Preview.

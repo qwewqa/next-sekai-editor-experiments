@@ -16,6 +16,10 @@ const { storageKey } = await import('../../../src/storage')
 const { Cancelled, withSaveAttempt } = await import('../../../src/editor/save/saveAttempt')
 const { ringEntries, resetRingForTests } = await import('../../../src/diagnostics')
 const { assembleZip, prepareEntry } = await import('../../../src/zip')
+const { settings } = await import('../../../src/settings')
+
+// Write to Chosen Files on Enabled, so the mock's save picker is offered.
+settings.filePicker = 'enabled'
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 

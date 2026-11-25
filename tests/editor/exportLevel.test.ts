@@ -64,7 +64,7 @@ let saveFeedback: string[] = []
 const remembered = () => exportMemory.target
 
 /** Write to Chosen Files, as the editor hands it to the platform. */
-let filePicker: FilePickerChoice = 'auto'
+let filePicker: FilePickerChoice = 'enabled'
 setFilePickerChoice(
     () => filePicker,
     () => {
@@ -82,7 +82,7 @@ const downloaded = (blob: Blob) =>
     )
 
 beforeEach(() => {
-    filePicker = 'auto'
+    filePicker = 'enabled'
     mock = createMockPlatform()
     setPlatformForTests(mock)
     clearExportMemory()
@@ -535,7 +535,7 @@ test('a full disk at the picked file does not offer Always Download', async () =
     const { ui, asked } = scriptedUi([undefined])
     assert.equal(await exportByPicker(context(ui, 5)), 'cancelled')
     assert.equal(asked[0]?.args[3], false)
-    assert.equal(filePicker, 'auto')
+    assert.equal(filePicker, 'enabled')
 })
 
 test('a picked write the platform refuses to read back remembers only the name', async () => {

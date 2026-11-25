@@ -18,6 +18,11 @@ import { levelDataDiskState } from '../../../src/platform/fingerprint'
 import { createMockPlatform } from '../../../src/platform/mock'
 import '../../editor/saveMatrix/env'
 
+// Write to Chosen Files on Enabled, so the mock's save picker is offered. The editor's settings
+// load after the env's hooks.
+const { settings } = await import('../../../src/settings')
+settings.filePicker = 'enabled'
+
 // File events capture operation metadata once; presentation uses the current locale.
 const messagesOf = (locale: string) =>
     JSON.parse(

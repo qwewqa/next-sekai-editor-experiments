@@ -2,8 +2,15 @@ import { platform as buildPlatform } from '#platform'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as platformModule from '../../src/platform'
+import { setFilePickerChoice } from '../../src/platform/filePicker'
 import { createMockPlatform } from '../../src/platform/mock'
 import { appVersion, parseVersionOverride } from '../../src/platform/version'
+
+// Write to Chosen Files on Enabled, so the mock's save picker is offered.
+setFilePickerChoice(
+    () => 'enabled',
+    () => undefined,
+)
 
 test("index.ts exports the build's platform as a live binding", () => {
     assert.equal(platformModule.platform, buildPlatform)

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { gzip, ungzip } from 'pako'
+import { setFilePickerChoice } from '../../src/platform/filePicker'
 import { levelDataDiskState, nxspDiskState } from '../../src/platform/fingerprint'
 import { DATA_URL_LIMIT } from '../../src/platform/handover'
 import { FileError } from '../../src/platform/types'
@@ -8,6 +9,11 @@ import { platform } from '../../src/platform/web'
 import { installFakeBrowser, recordingHandle } from './fakeBrowser'
 
 const browser = installFakeBrowser()
+// Write to Chosen Files on Enabled, so the save picker is offered where the browser has it.
+setFilePickerChoice(
+    () => 'enabled',
+    () => undefined,
+)
 
 const levelBytes = (n = 0) => gzip(JSON.stringify({ bgmOffset: 0, entities: [{ n }] }))
 
