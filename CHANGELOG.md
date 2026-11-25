@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.1 (2026-11-25)
+
 - (Web) With Write to Chosen Files set to Auto, saves and exports are now downloaded in every browser.
 
 ## 0.6.0 (2026-11-09)
