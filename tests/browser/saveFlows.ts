@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import type { FilePickerChoice } from '../../src/platform/filePicker'
 import { installTestPlatform, waitForStartup } from './editorFixture'
 
 // Helpers for the Save core's specs: a stored page under the platform override,
@@ -8,6 +9,8 @@ type Row = Record<string, unknown>
 
 export type Start = {
     fileSystemAccess?: boolean | 'opfs'
+    /** Write to Chosen Files on the first load, where it is not Enabled. */
+    filePicker?: FilePickerChoice
     /** Extra platform override fields, such as `activation`. */
     override?: Record<string, unknown>
     /** The storage worker's test flags, such as `forceQuota`. */
@@ -17,7 +20,7 @@ export type Start = {
 /** Opens the editor with stored sessions, the override's pickers, and no preview or sidebar. */
 export const start = async (
     page: Page,
-    { fileSystemAccess = 'opfs', override = {}, storage = {} }: Start = {},
+    { fileSystemAccess = 'opfs', filePicker, override = {}, storage = {} }: Start = {},
 ) => {
     await page.addInitScript((storage) => {
         localStorage.setItem('nse.test.storage', JSON.stringify(storage))
@@ -30,7 +33,7 @@ export const start = async (
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
         localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     }, storage)
-    await page.addInitScript(installTestPlatform, { fileSystemAccess, ...override })
+    await page.addInitScript(installTestPlatform, { fileSystemAccess, filePicker, ...override })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)

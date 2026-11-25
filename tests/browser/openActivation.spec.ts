@@ -98,7 +98,8 @@ for (const { picker, native } of [
                 picks.push(pick)
             })
             await page.addInitScript(watchOpen, { native, hold })
-            await start(page, { fileSystemAccess: native })
+            // Open only: Write to Chosen Files stays on its default, Auto.
+            await start(page, { fileSystemAccess: native, filePicker: 'auto' })
             await expect
                 .poll(() => page.evaluate(() => window.nseFlushTest !== undefined))
                 .toBe(true)

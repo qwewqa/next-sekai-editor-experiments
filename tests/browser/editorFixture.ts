@@ -4,6 +4,7 @@ import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
 import type { PlatformOverride } from '../../src/platform/detect'
+import type { FilePickerChoice } from '../../src/platform/filePicker'
 import type { Entity } from '../../src/state/entities'
 import { AGREED, AGREEMENT_KEY } from '../helpers/agreement'
 
@@ -193,19 +194,27 @@ export const waitForStartup = async (page: Page, { agreement = false } = {}) => 
     if (!agreement) await expectNoAgreement(page)
 }
 
+export type TestPlatform = PlatformOverride & {
+    /** Write to Chosen Files on the profile's first load. */
+    filePicker?: FilePickerChoice
+}
+
 /**
- * Seeds the platform override: pass it to addInitScript with the override. An override that asks
- * for File System Access (the OPFS pickers, or `true` for the browser's own, often stubbed) gets
- * Write to Chosen Files on Enabled, which the save picker needs; only on the profile's first load,
- * so a setting the spec stored, or the page changed, stays.
+ * Seeds the platform override: pass it to addInitScript with the override. Write to Chosen Files
+ * starts on `filePicker`, or on Enabled, which the save picker needs, when the override asks for
+ * File System Access (the OPFS pickers, or `true` for the browser's own, often stubbed). Only on
+ * the profile's first load, so a setting the spec stored, or the page changed, stays.
  */
-export const installTestPlatform = (override: PlatformOverride) => {
+export const installTestPlatform = ({ filePicker, ...override }: TestPlatform) => {
     localStorage.setItem('nse.test.platform', JSON.stringify(override))
-    if (override.fileSystemAccess === undefined || override.fileSystemAccess === false) return
-    if (localStorage.getItem('nse.test.filePickerSeeded') !== null) return
+    const first = filePicker ?? (override.fileSystemAccess ? 'enabled' : undefined)
+    if (first === undefined || localStorage.getItem('nse.test.filePickerSeeded') !== null) return
     localStorage.setItem('nse.test.filePickerSeeded', 'true')
-    if (localStorage.getItem('sonolus-next-sekai-editor.filePicker') === null)
-        localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"enabled"')
+    if (
+        filePicker !== undefined ||
+        localStorage.getItem('sonolus-next-sekai-editor.filePicker') === null
+    )
+        localStorage.setItem('sonolus-next-sekai-editor.filePicker', JSON.stringify(first))
 }
 
 // This function is evaluated inside the page. Seed charts through the existing

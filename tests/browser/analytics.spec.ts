@@ -600,10 +600,7 @@ test('a scripted visit counts each press once by name and source, and sends the 
     const messages = watchConsole(page)
     await installAnalytics(page)
     // Write to Chosen Files on its default, Auto, over the override's pickers.
-    await page.addInitScript(() => {
-        localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"auto"')
-    })
-    await start(page)
+    await start(page, { filePicker: 'auto' })
     await interact(page)
     await page
         .locator('[data-editor-toolbar]')

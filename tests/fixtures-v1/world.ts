@@ -1,7 +1,7 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type { Dump } from '../../src/local/dump'
-import { closePage } from '../browser/editorFixture'
+import { closePage, installTestPlatform } from '../browser/editorFixture'
 import {
     chainById,
     chainOf,
@@ -54,12 +54,11 @@ export class Profile {
         await seedContext(context, { agreement: false })
         // After seedContext: the platform for this device, the storage flags a step sets on the
         // profile (`nse.fixtures.flags`, never dumped), and the preview panel out of the way.
+        await context.addInitScript(installTestPlatform, {
+            fileSystemAccess: files === 'opfs' ? ('opfs' as const) : false,
+        })
         await context.addInitScript(
-            ({ files, prefix }) => {
-                localStorage.setItem(
-                    'nse.test.platform',
-                    JSON.stringify({ fileSystemAccess: files === 'opfs' ? 'opfs' : false }),
-                )
+            ({ prefix }) => {
                 localStorage.setItem(
                     'nse.test.storage',
                     localStorage.getItem('nse.fixtures.flags') ?? '{}',
@@ -67,7 +66,7 @@ export class Profile {
                 localStorage.setItem(`${prefix}showPreview`, 'false')
                 localStorage.setItem(`${prefix}showMinimap`, 'false')
             },
-            { files, prefix },
+            { prefix },
         )
         return new Profile(context, clock, files)
     }

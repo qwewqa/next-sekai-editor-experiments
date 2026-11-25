@@ -22,12 +22,7 @@ import {
 } from './saveFlows'
 
 // Write to Chosen Files over the OPFS pickers of the override, and the Settings row. The
-// override's pickers start the setting on Enabled; other specs store theirs before the page loads.
-
-const withSetting = (page: Page, choice: 'auto' | 'disabled') =>
-    page.addInitScript((choice) => {
-        localStorage.setItem('sonolus-next-sekai-editor.filePicker', JSON.stringify(choice))
-    }, choice)
+// override's pickers start the setting on Enabled unless a test starts it on another choice.
 
 /** The download a Save made, read as a project file. */
 const downloadedProject = async (download: Download) => {
@@ -43,8 +38,7 @@ const saveOnce = async (page: Page) => {
 }
 
 test('Auto downloads where the browser has the save picker', async ({ page }) => {
-    await withSetting(page, 'auto')
-    await start(page)
+    await start(page, { filePicker: 'auto' })
     const downloads: Download[] = []
     page.on('download', (download) => downloads.push(download))
     await saveOnce(page)
@@ -55,8 +49,7 @@ test('Auto downloads where the browser has the save picker', async ({ page }) =>
 })
 
 test('Disabled downloads, and the picker returns with Enabled', async ({ page }) => {
-    await withSetting(page, 'disabled')
-    await start(page)
+    await start(page, { filePicker: 'disabled' })
     const downloads: Download[] = []
     page.on('download', (download) => downloads.push(download))
     await saveOnce(page)
@@ -206,8 +199,7 @@ const openLocalData = (page: Page) =>
 test('Settings › Local Data offers Write to Chosen Files where the picker exists', async ({
     page,
 }) => {
-    await withSetting(page, 'auto')
-    await start(page)
+    await start(page, { filePicker: 'auto' })
     await openLocalData(page)
     const field = page.locator('#settings-localData [data-file-picker]')
     const select = field.getByRole('combobox')
@@ -228,6 +220,10 @@ test('Settings › Local Data offers Write to Chosen Files where the picker exis
             return [!!platform.pickSaveFile, platform.capabilities.writeBack]
         }),
     ).toEqual([false, false])
+    await page.reload()
+    await waitForStartup(page)
+    await openLocalData(page)
+    await expect(select).toHaveValue('disabled')
 })
 
 test('Settings › Local Data has no Write to Chosen Files without the picker', async ({ page }) => {
@@ -253,8 +249,7 @@ test('Disabled: a first Save of an opened "coconut (3).nxsp" kept with a handle 
     const bytes = [...(await readFileBytes((await (await downloading).path())!))]
     await maker.close()
 
-    await withSetting(page, 'disabled')
-    await start(page)
+    await start(page, { filePicker: 'disabled' })
     await writeFile(page, 'coconut (3).nxsp', bytes)
     await page.evaluate(async () => {
         const root = await navigator.storage.getDirectory()
