@@ -599,9 +599,9 @@ test('a scripted visit counts each press once by name and source, and sends the 
     const { batches, stray } = await mock(context)
     const messages = watchConsole(page)
     await installAnalytics(page)
-    // Write to Chosen Files at its default, Auto: the config seeds Enabled.
+    // Write to Chosen Files on its default, Auto, over the override's pickers.
     await page.addInitScript(() => {
-        localStorage.removeItem('sonolus-next-sekai-editor.filePicker')
+        localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"auto"')
     })
     await start(page)
     await interact(page)

@@ -87,7 +87,7 @@ const refusingVideoPage = async (page: Page, refuse: NonNullable<ExportFaults['r
     // The user renames the file in the picker.
     await refusingPicker(page, { read: 'always', as: 'renamed.webm' })
     // The press keeps its activation: the picker opens without a Ready press.
-    await page.addInitScript(installTestPlatform, { activation: true })
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: true, activation: true })
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
         route.fulfill({ body: resource('particles') }),

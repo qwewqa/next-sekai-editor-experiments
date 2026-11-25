@@ -193,9 +193,19 @@ export const waitForStartup = async (page: Page, { agreement = false } = {}) => 
     if (!agreement) await expectNoAgreement(page)
 }
 
-/** Seeds the platform override: pass it to addInitScript with the override. */
+/**
+ * Seeds the platform override: pass it to addInitScript with the override. An override that asks
+ * for File System Access (the OPFS pickers, or `true` for the browser's own, often stubbed) gets
+ * Write to Chosen Files on Enabled, which the save picker needs; only on the profile's first load,
+ * so a setting the spec stored, or the page changed, stays.
+ */
 export const installTestPlatform = (override: PlatformOverride) => {
     localStorage.setItem('nse.test.platform', JSON.stringify(override))
+    if (override.fileSystemAccess === undefined || override.fileSystemAccess === false) return
+    if (localStorage.getItem('nse.test.filePickerSeeded') !== null) return
+    localStorage.setItem('nse.test.filePickerSeeded', 'true')
+    if (localStorage.getItem('sonolus-next-sekai-editor.filePicker') === null)
+        localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"enabled"')
 }
 
 // This function is evaluated inside the page. Seed charts through the existing

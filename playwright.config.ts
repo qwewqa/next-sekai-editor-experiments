@@ -107,8 +107,6 @@ const baseURL = `http://127.0.0.1:${port}`
 // startup guard's question about an opening that did not finish, which a spec that reloads or
 // closes soon after an open would otherwise meet on a slow machine; the guard's own specs clear
 // `nse.test.noOpeningGuard`. The agreement counts as given; its own specs remove the record.
-// Write to Chosen Files starts Enabled, so a page with the save picker uses it; the specs of Auto
-// remove the setting.
 const seeded = (value: 'main' | 'worker') => ({
     storageState: {
         cookies: [],
@@ -119,7 +117,6 @@ const seeded = (value: 'main' | 'worker') => ({
                     { name: 'nse.test.previewHost', value },
                     { name: 'nse.test.noOpeningGuard', value: 'true' },
                     { name: AGREEMENT_KEY, value: AGREED },
-                    { name: 'sonolus-next-sekai-editor.filePicker', value: '"enabled"' },
                 ],
             },
         ],

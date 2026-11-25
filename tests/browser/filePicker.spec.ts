@@ -21,13 +21,13 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Write to Chosen Files over the OPFS pickers of the override, and the Settings row. The config
-// seeds Enabled; the specs of Auto remove the setting before the page loads.
+// Write to Chosen Files over the OPFS pickers of the override, and the Settings row. The
+// override's pickers start the setting on Enabled; other specs store theirs before the page loads.
 
-const withAuto = (page: Page) =>
-    page.addInitScript(() => {
-        localStorage.removeItem('sonolus-next-sekai-editor.filePicker')
-    })
+const withSetting = (page: Page, choice: 'auto' | 'disabled') =>
+    page.addInitScript((choice) => {
+        localStorage.setItem('sonolus-next-sekai-editor.filePicker', JSON.stringify(choice))
+    }, choice)
 
 /** The download a Save made, read as a project file. */
 const downloadedProject = async (download: Download) => {
@@ -43,7 +43,7 @@ const saveOnce = async (page: Page) => {
 }
 
 test('Auto downloads where the browser has the save picker', async ({ page }) => {
-    await withAuto(page)
+    await withSetting(page, 'auto')
     await start(page)
     const downloads: Download[] = []
     page.on('download', (download) => downloads.push(download))
@@ -55,9 +55,7 @@ test('Auto downloads where the browser has the save picker', async ({ page }) =>
 })
 
 test('Disabled downloads, and the picker returns with Enabled', async ({ page }) => {
-    await page.addInitScript(() => {
-        localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"disabled"')
-    })
+    await withSetting(page, 'disabled')
     await start(page)
     const downloads: Download[] = []
     page.on('download', (download) => downloads.push(download))
@@ -208,7 +206,7 @@ const openLocalData = (page: Page) =>
 test('Settings › Local Data offers Write to Chosen Files where the picker exists', async ({
     page,
 }) => {
-    await withAuto(page)
+    await withSetting(page, 'auto')
     await start(page)
     await openLocalData(page)
     const field = page.locator('#settings-localData [data-file-picker]')
@@ -255,9 +253,7 @@ test('Disabled: a first Save of an opened "coconut (3).nxsp" kept with a handle 
     const bytes = [...(await readFileBytes((await (await downloading).path())!))]
     await maker.close()
 
-    await page.addInitScript(() => {
-        localStorage.setItem('sonolus-next-sekai-editor.filePicker', '"disabled"')
-    })
+    await withSetting(page, 'disabled')
     await start(page)
     await writeFile(page, 'coconut (3).nxsp', bytes)
     await page.evaluate(async () => {

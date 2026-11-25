@@ -3,7 +3,7 @@ import { readFile as readFileBytes } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { executePlan, planNxsp, readNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
-import { installEditorFixture } from './editorFixture'
+import { installEditorFixture, installTestPlatform } from './editorFixture'
 import {
     openVideoDialog,
     shortVideoClip,
@@ -279,8 +279,9 @@ test('Export Level Data: Always Download after a failed write downloads the leve
     expect(await setting(page)).toBe('disabled')
 })
 
-/** The Export Video dialog on the page's own route, over a chart with notes. */
+/** The Export Video dialog on the page's own route, over a chart with notes, with the save picker. */
 const openVideo = async (page: Page) => {
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: true })
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
         route.fulfill({ body: resource('particles') }),

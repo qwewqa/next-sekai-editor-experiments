@@ -10,7 +10,7 @@ import { canonicalBytes } from '../../../src/local/records/canonical'
 import { chunkCrc32 } from '../../../src/local/records/rows'
 import { webFolder } from '../../fixtures-v1/folders'
 import { SampleClock } from '../../samples/driver'
-import { waitForStartup } from '../editorFixture'
+import { installTestPlatform, waitForStartup } from '../editorFixture'
 
 // Seeding a profile from a v1 dump (tests/fixtures/web-storage-v1/): a blank same-origin page loads
 // the seeder alone and writes the database and localStorage before the editor first loads in the
@@ -108,22 +108,18 @@ export const seededContext = async (
     const context = await browser.newContext({ timezoneId: 'UTC', locale: 'en-US' })
     const clock = new SampleClock(context, start)
     await clock.install()
-    await context.addInitScript(
-        ({ files, prefix }) => {
-            // The sample driver finds the app's modules in the resource timing entries.
-            performance.setResourceTimingBufferSize(5000)
-            localStorage.setItem('nse.test.storage', '{}')
-            localStorage.setItem(
-                'nse.test.platform',
-                JSON.stringify({ fileSystemAccess: files === 'opfs' ? 'opfs' : false }),
-            )
-            localStorage.setItem(`${prefix}showPreview`, 'false')
-            localStorage.setItem(`${prefix}showMinimap`, 'false')
-            // The agreement counts as given.
-            localStorage.setItem(`${prefix}agreement`, '{"terms":999,"privacy":999}')
-        },
-        { files, prefix },
-    )
+    await context.addInitScript(installTestPlatform, {
+        fileSystemAccess: files === 'opfs' ? ('opfs' as const) : false,
+    })
+    await context.addInitScript((prefix) => {
+        // The sample driver finds the app's modules in the resource timing entries.
+        performance.setResourceTimingBufferSize(5000)
+        localStorage.setItem('nse.test.storage', '{}')
+        localStorage.setItem(`${prefix}showPreview`, 'false')
+        localStorage.setItem(`${prefix}showMinimap`, 'false')
+        // The agreement counts as given.
+        localStorage.setItem(`${prefix}agreement`, '{"terms":999,"privacy":999}')
+    }, prefix)
     if (!json && !zip) return { context, clock }
     const dump = json && {
         ...json,
