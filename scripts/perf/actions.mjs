@@ -1020,7 +1020,7 @@ export const actions = {
     },
 
     // Files
-    /** Save (p) after an edit: to the bound file (`platform` opfs), or a download. */
+    /** Save (p) after an edit: to the bound file (`platform` opfs and `local` filePicker "enabled"), or a download. */
     save: {
         prep: async (page, cell, state) => {
             await closeHistory(page)

@@ -85,7 +85,7 @@ A plan is JSON (see `scripts/perf/plans/example.json`): `defaults` for every cel
 - `chart`: the path of a level file from the editor root, opened with Open. A group with a `seed` can leave it out;
 - optional `seed`: a dump (see "Seeds") written into the fresh profile before the app opens its database. The app then continues the seeded session, as it does when the editor is opened again;
 - optional `boot`: a probe that runs from the start of the page, for the `startup` scenario;
-- optional `platform`: the `nse.test.platform` override, such as `{ "fileSystemAccess": "opfs" }` for a Save that writes back to its file through the app's test pickers. Release builds ignore it, so build with `NSE_SITE=test npm run perf`;
+- optional `platform`: the `nse.test.platform` override, such as `{ "fileSystemAccess": "opfs" }` for the app's test pickers. A Save writes back to its file only with this and the Write to Chosen Files setting on Enabled, which `local` sets (see `d-bound1800` in `ui.json`). Release builds ignore it, so build with `NSE_SITE=test npm run perf`;
 - optional `local`: other localStorage keys, as strings;
 - optional `bgm`;
 - optional `settings`, app settings set before each cell, such as `{ "playFollow": false }`;
