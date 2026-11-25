@@ -147,7 +147,18 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
     const kind = options.kind ?? 'web'
     const journalStorage = options.journalStorage ?? new MemoryStorage()
     const os = options.os ?? 'windows'
-    const capabilities = Object.freeze({ ...defaults(kind), ...options.capabilities })
+    const configured = { ...defaults(kind), ...options.capabilities }
+    // On the web, Write to Chosen Files decides as it does in web.ts.
+    const capabilities: PlatformCapabilities = Object.freeze(
+        kind === 'web'
+            ? {
+                  ...configured,
+                  get writeBack() {
+                      return configured.writeBack && choiceAllowsPicker()
+                  },
+              }
+            : configured,
+    )
     const files = new Map<string, Blob>()
     const modified = new Map<string, number>()
     const picks: OpenedFile[][] = []
@@ -359,7 +370,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         writeFile(name, new Blob([]))
         return target
     }
-    let picker: typeof pickSaveFile | undefined = capabilities.writeBack ? pickSaveFile : undefined
+    let picker: typeof pickSaveFile | undefined = configured.writeBack ? pickSaveFile : undefined
 
     const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> =>
         (await diskOf(targetKey(target), kind)) ?? 'missing'
