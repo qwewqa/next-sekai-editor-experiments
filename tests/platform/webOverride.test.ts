@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { gzip } from 'pako'
 import { detection, PLATFORM_OVERRIDE_KEY } from '../../src/platform/detect'
+import { setFilePickerChoice } from '../../src/platform/filePicker'
 import { platform } from '../../src/platform/web'
 import { installFakeBrowser } from './fakeBrowser'
 
@@ -18,6 +19,12 @@ Object.defineProperty(globalThis, 'navigator', {
     configurable: true,
     value: { userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/124.0.0.0', maxTouchPoints: 0 },
 })
+
+// Write to Chosen Files on Enabled, so only the override turns the save picker off.
+setFilePickerChoice(
+    () => 'enabled',
+    () => undefined,
+)
 
 const level = () => Promise.resolve(new Blob([gzip(JSON.stringify({ entities: [] }))]))
 
